@@ -5,6 +5,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from sqlalchemy import text
 
+from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import engine
 
 router = Router()
@@ -47,8 +48,20 @@ async def cmd_status(message: Message) -> None:
     except Exception as e:
         db_status = f"❌ Ошибка: {e}"
 
+    # Проверяем подключение к Ollama
+    ollama_status = "❌ Не подключён"
+    try:
+        ollama = OllamaClient()
+        if await ollama.health_check():
+            models = await ollama.list_models()
+            ollama_status = f"✅ Доступен (модели: {', '.join(models[:3])})"
+        else:
+            ollama_status = "❌ Недоступен"
+    except Exception as e:
+        ollama_status = f"❌ Ошибка: {e}"
+
     await message.answer(
         f"✅ Бот работает!\n"
         f"🗄 База данных: {db_status}\n"
-        f"🤖 Ollama: ⏳ будет добавлен на Шаге 2"
+        f"🤖 Ollama: {ollama_status}"
     )
