@@ -7,8 +7,10 @@ import re
 from aiogram import F, Router
 from aiogram.types import Message
 
+from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import async_session_factory
 from src.infrastructure.db.repositories import PostgresEntryRepository
+from src.usecases.analyze_entry import AnalyzeEntryUseCase
 from src.usecases.save_entry import SaveEntryUseCase
 
 router = Router()
@@ -34,17 +36,25 @@ async def handle_text(message: Message) -> None:
     try:
         async with async_session_factory() as session:
             repo = PostgresEntryRepository(session)
-            use_case = SaveEntryUseCase(repository=repo)
+            ollama = OllamaClient()
+            analyzer = AnalyzeEntryUseCase(
+                reader=repo,
+                updater=repo,
+                ai_client=ollama,
+            )
+            use_case = SaveEntryUseCase(repository=repo, analyzer=analyzer)
             entry = await use_case.execute(
                 user_id=user_id,
                 text=text if not url else None,
                 url=url,
             )
 
+        tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else ""
         await message.answer(
             f"✅ Сохранено!\n"
             f"🆔 ID: {entry.id}\n"
-            f"📝 {entry.raw_text[:100]}"
+            f"📝 {entry.summary or entry.raw_text[:100]}\n"
+            f"🏷 {tags_str}"
         )
     except ValueError as e:
         await message.answer(f"❌ {e}")
