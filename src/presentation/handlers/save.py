@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import re
 
 from aiogram import F, Router
@@ -13,6 +15,7 @@ from src.infrastructure.db.repositories import PostgresEntryRepository
 from src.usecases.analyze_entry import AnalyzeEntryUseCase
 from src.usecases.save_entry import SaveEntryUseCase
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 URL_PATTERN = re.compile(r"https?://\S+")
@@ -21,6 +24,33 @@ URL_PATTERN = re.compile(r"https?://\S+")
 def _extract_url(text: str) -> str | None:
     match = URL_PATTERN.search(text)
     return match.group(0) if match else None
+
+
+async def _analyze_in_background(
+    entry_id: int,
+    user_id: int,
+    message: Message,
+) -> None:
+    """Фоновый анализ записи с уведомлением пользователя."""
+    try:
+        async with async_session_factory() as session:
+            repo = PostgresEntryRepository(session)
+            ollama = OllamaClient()
+            analyzer = AnalyzeEntryUseCase(
+                reader=repo,
+                updater=repo,
+                ai_client=ollama,
+            )
+            entry = await analyzer.execute(entry_id, user_id)
+
+        tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else ""
+        await message.answer(
+            f"✅ Анализ завершён для ID {entry_id}!\n"
+            f"📝 {entry.summary}\n"
+            f"🏷 {tags_str}"
+        )
+    except Exception as e:
+        logger.warning("Ошибка фонового анализа записи %s: %s", entry_id, e)
 
 
 @router.message(F.text)
@@ -34,28 +64,27 @@ async def handle_text(message: Message) -> None:
     url = _extract_url(text)
 
     try:
+        # Сохраняем сразу (без анализа)
         async with async_session_factory() as session:
             repo = PostgresEntryRepository(session)
-            ollama = OllamaClient()
-            analyzer = AnalyzeEntryUseCase(
-                reader=repo,
-                updater=repo,
-                ai_client=ollama,
-            )
-            use_case = SaveEntryUseCase(repository=repo, analyzer=analyzer)
+            use_case = SaveEntryUseCase(repository=repo)
             entry = await use_case.execute(
                 user_id=user_id,
                 text=text if not url else None,
                 url=url,
             )
 
-        tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else ""
         await message.answer(
-            f"✅ Сохранено!\n"
-            f"🆔 ID: {entry.id}\n"
-            f"📝 {entry.summary or entry.raw_text[:100]}\n"
-            f"🏷 {tags_str}"
+            f"✅ Сохранено! ID: {entry.id}\n"
+            f"⏳ Анализирую через ИИ..."
         )
+
+        # Запускаем анализ в фоне
+        if entry.id:
+            asyncio.create_task(
+                _analyze_in_background(entry.id, user_id, message)
+            )
+
     except ValueError as e:
         await message.answer(f"❌ {e}")
     except Exception as e:
