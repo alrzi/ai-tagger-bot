@@ -3,6 +3,9 @@
 from aiogram import Router
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
+from sqlalchemy import text
+
+from src.infrastructure.db.engine import engine
 
 router = Router()
 
@@ -35,7 +38,17 @@ async def cmd_help(message: Message) -> None:
 
 @router.message(Command("status"))
 async def cmd_status(message: Message) -> None:
+    # Проверяем подключение к БД
+    db_status = "❌ Не подключена"
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        db_status = "✅ Подключена"
+    except Exception as e:
+        db_status = f"❌ Ошибка: {e}"
+
     await message.answer(
-        "✅ Бот работает!\n"
-        "⏳ Проверка БД и Ollama будет добавлена на следующем шаге."
+        f"✅ Бот работает!\n"
+        f"🗄 База данных: {db_status}\n"
+        f"🤖 Ollama: ⏳ будет добавлен на Шаге 2"
     )
