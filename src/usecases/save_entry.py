@@ -22,6 +22,18 @@ class Analyzer(Protocol):
     async def execute(self, entry_id: int, user_id: int) -> Entry: ...
 
 
+class Embedder(Protocol):
+    """Протокол для генерации эмбеддинга."""
+
+    async def embed(self, text: str) -> list[float]: ...
+
+
+class EmbeddingUpdater(Protocol):
+    """Протокол для обновления эмбеддинга в БД."""
+
+    async def update_embedding(self, entry_id: int, embedding: list[float]) -> None: ...
+
+
 class SaveEntryUseCase:
     """Сценарий: пользователь отправляет текст → сохраняем → анализируем."""
 
@@ -29,9 +41,13 @@ class SaveEntryUseCase:
         self,
         repository: EntrySaver,
         analyzer: Analyzer | None = None,
+        embedder: Embedder | None = None,
+        embedding_updater: EmbeddingUpdater | None = None,
     ) -> None:
         self.repository = repository
         self.analyzer = analyzer
+        self.embedder = embedder
+        self.embedding_updater = embedding_updater
 
     async def execute(
         self,
@@ -61,5 +77,15 @@ class SaveEntryUseCase:
                 entry = await self.analyzer.execute(entry.id, user_id)
             except Exception as e:
                 logger.warning("Ошибка анализа записи %s: %s", entry.id, e)
+
+        # Генерация эмбеддинга (если доступен)
+        if self.embedder and self.embedding_updater and entry.id:
+            try:
+                text_for_embedding = entry.summary or entry.raw_text
+                embedding = await self.embedder.embed(text_for_embedding[:2000])
+                await self.embedding_updater.update_embedding(entry.id, embedding)
+                entry.embedding = embedding
+            except Exception as e:
+                logger.warning("Ошибка генерации эмбеддинга для записи %s: %s", entry.id, e)
 
         return entry

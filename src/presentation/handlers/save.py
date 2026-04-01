@@ -10,6 +10,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 
 from src.infrastructure.ai.analysis import OllamaEntryAnalysisService
+from src.infrastructure.ai.embeddings import OllamaEmbeddingService
 from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import async_session_factory
 from src.infrastructure.db.repositories import PostgresEntryRepository
@@ -44,6 +45,12 @@ async def _analyze_in_background(
                 analysis_service=analysis_service,
             )
             entry = await analyzer.execute(entry_id, user_id)
+
+            # Генерация эмбеддинга
+            embedder = OllamaEmbeddingService()
+            text_for_embedding = entry.summary or entry.raw_text
+            embedding = await embedder.embed(text_for_embedding[:2000])
+            await repo.update_embedding(entry_id, embedding)
 
         tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else ""
         await message.answer(

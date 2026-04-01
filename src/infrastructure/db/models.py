@@ -28,7 +28,7 @@ class EntryModel(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[List[str]] = mapped_column(ARRAY(String), default=list)
     content_type: Mapped[str] = mapped_column(String(20), default="unknown")
-    embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(768), nullable=True)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(4096), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

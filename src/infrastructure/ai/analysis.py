@@ -22,8 +22,7 @@ logger = logging.getLogger(__name__)
 
 class AIClient(Protocol):
     """Протокол для ИИ-клиента."""
-
-    async def generate(self, prompt: str) -> str: ...
+    
     async def generate_structured(self, prompt: str, schema: type[T]) -> T: ...
 
 

@@ -113,6 +113,14 @@ class PostgresEntryRepository:
         await self.session.commit()
         return True
 
+    async def update_embedding(self, entry_id: int, embedding: list[float]) -> None:
+        """Обновляет эмбеддинг записи."""
+        model = await self.session.get(EntryModel, entry_id)
+        if model is None:
+            return
+        model.embedding = embedding
+        await self.session.commit()
+
     @staticmethod
     def _to_domain(model: EntryModel) -> Entry:
         return Entry(
