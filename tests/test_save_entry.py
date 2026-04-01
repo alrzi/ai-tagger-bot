@@ -84,3 +84,21 @@ async def test_save_none_text_raises_error(use_case: SaveEntryUseCase) -> None:
     # When / Then
     with pytest.raises(ValueError, match="Нет контента"):
         await use_case.execute(user_id=user_id)
+
+
+@pytest.mark.asyncio
+async def test_save_preserves_tags() -> None:
+    """Тест: теги сохраняются при обновлении записи."""
+    # Given
+    repo = MockEntryRepository()
+    use_case = SaveEntryUseCase(repository=repo)
+
+    # When — сохраняем запись
+    entry = await use_case.execute(user_id=123, text="Тест с тегами")
+    entry.tags = ["python", "тестирование"]
+    entry.summary = "Тестовое резюме"
+
+    # Then — теги должны сохраниться
+    assert repo.saved_entry is not None
+    assert repo.saved_entry.tags == ["python", "тестирование"]
+    assert repo.saved_entry.summary == "Тестовое резюме"

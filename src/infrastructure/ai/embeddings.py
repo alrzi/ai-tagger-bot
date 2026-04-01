@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, cast
 
 import httpx
 
@@ -39,7 +39,7 @@ class OllamaEmbeddingService:
                 resp.raise_for_status()
                 data = resp.json()
                 # /api/embed возвращает {"embeddings": [[...]]}
-                return data["embeddings"][0]
+                return cast(list[float], data["embeddings"][0])
             except (KeyError, IndexError):
                 # Fallback на старый endpoint /api/embeddings
                 resp = await client.post(
@@ -48,4 +48,4 @@ class OllamaEmbeddingService:
                     timeout=60,
                 )
                 resp.raise_for_status()
-                return resp.json()["embedding"]
+                return cast(list[float], resp.json()["embedding"])

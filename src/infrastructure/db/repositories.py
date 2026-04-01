@@ -19,17 +19,29 @@ class PostgresEntryRepository:
         self.session = session
 
     async def save(self, entry: Entry) -> Entry:
-        model = EntryModel(
-            user_id=entry.user_id,
-            url=entry.url,
-            title=entry.title,
-            raw_text=entry.raw_text,
-            summary=entry.summary,
-            tags=entry.tags,
-            content_type=entry.content_type.value,
-            embedding=entry.embedding,
-        )
-        self.session.add(model)
+        if entry.id is not None:
+            # Обновляем существующую запись
+            model = await self.session.get(EntryModel, entry.id)
+            if model is None:
+                raise ValueError(f"Запись {entry.id} не найдена")
+            model.summary = entry.summary
+            model.tags = entry.tags
+            model.content_type = entry.content_type.value
+            model.embedding = entry.embedding
+        else:
+            # Создаём новую запись
+            model = EntryModel(
+                user_id=entry.user_id,
+                url=entry.url,
+                title=entry.title,
+                raw_text=entry.raw_text,
+                summary=entry.summary,
+                tags=entry.tags,
+                content_type=entry.content_type.value,
+                embedding=entry.embedding,
+            )
+            self.session.add(model)
+
         await self.session.commit()
         await self.session.refresh(model)
         return self._to_domain(model)
