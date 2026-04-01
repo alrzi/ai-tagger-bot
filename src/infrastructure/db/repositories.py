@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from sqlalchemy import select, text
@@ -74,6 +75,19 @@ class PostgresEntryRepository:
         rows = result.fetchall()
         results: list[tuple[Entry, float]] = []
         for row in rows:
+            # Конвертируем теги из array в list
+            tags = []
+            if row.tags:
+                tags = [str(t) for t in row.tags]
+
+            embedding = None
+            if row.embedding is not None:
+                emb = row.embedding
+                if isinstance(emb, str):
+                    # pgvector возвращает строку '[0.1, 0.2, ...]'
+                    emb = json.loads(emb)
+                embedding = [float(x) for x in emb]
+
             entry = Entry(
                 id=row.id,
                 user_id=row.user_id,
@@ -81,9 +95,9 @@ class PostgresEntryRepository:
                 title=row.title or "",
                 raw_text=row.raw_text or "",
                 summary=row.summary or "",
-                tags=list(row.tags) if row.tags else [],
+                tags=tags,
                 content_type=ContentType(row.content_type) if row.content_type else ContentType.UNKNOWN,
-                embedding=list(row.embedding) if row.embedding else None,
+                embedding=embedding,
                 created_at=row.created_at,
             )
             results.append((entry, float(row.similarity)))
@@ -123,6 +137,15 @@ class PostgresEntryRepository:
 
     @staticmethod
     def _to_domain(model: EntryModel) -> Entry:
+        # Конвертируем numpy array в list
+        tags = []
+        if model.tags:
+            tags = [str(t) for t in model.tags]
+
+        embedding = None
+        if model.embedding is not None:
+            embedding = [float(x) for x in model.embedding]
+
         return Entry(
             id=model.id,
             user_id=model.user_id,
@@ -130,8 +153,8 @@ class PostgresEntryRepository:
             title=model.title or "",
             raw_text=model.raw_text or "",
             summary=model.summary or "",
-            tags=list(model.tags) if model.tags else [],
+            tags=tags,
             content_type=ContentType(model.content_type) if model.content_type else ContentType.UNKNOWN,
-            embedding=list(model.embedding) if model.embedding else None,
+            embedding=embedding,
             created_at=model.created_at,
         )

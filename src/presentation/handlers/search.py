@@ -50,11 +50,14 @@ async def cmd_search(message: Message) -> None:
             return
 
         lines = [f"🔍 Найдено {len(results)} записей:\n"]
-        for entry, similarity in results:
-            tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else ""
+        for i, (entry, similarity) in enumerate(results, 1):
+            tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else "без тегов"
+            summary = entry.summary or entry.raw_text[:200]
+            if entry.summary and len(entry.summary) > 200:
+                summary = entry.summary[:200] + "..."
             lines.append(
-                f"🆔 {entry.id} ({similarity:.0%})\n"
-                f"📝 {entry.summary or entry.raw_text[:80]}\n"
+                f"{i}. 🆔 {entry.id} ({similarity:.0%})\n"
+                f"📝 {summary}\n"
                 f"🏷 {tags_str}\n"
             )
 
