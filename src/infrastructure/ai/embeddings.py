@@ -29,10 +29,23 @@ class OllamaEmbeddingService:
     async def embed(self, text: str) -> list[float]:
         """Генерирует векторный эмбеддинг для текста."""
         async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self.base_url}/api/embeddings",
-                json={"model": self.model, "prompt": text[:2000]},
-                timeout=60,
-            )
-            resp.raise_for_status()
-            return resp.json()["embedding"]
+            # Пробуем новый endpoint /api/embed (Ollama 0.1.26+)
+            try:
+                resp = await client.post(
+                    f"{self.base_url}/api/embed",
+                    json={"model": self.model, "input": text[:2000]},
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # /api/embed возвращает {"embeddings": [[...]]}
+                return data["embeddings"][0]
+            except (KeyError, IndexError):
+                # Fallback на старый endpoint /api/embeddings
+                resp = await client.post(
+                    f"{self.base_url}/api/embeddings",
+                    json={"model": self.model, "prompt": text[:2000]},
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                return resp.json()["embedding"]

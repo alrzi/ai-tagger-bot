@@ -73,9 +73,9 @@ async def _analyze_in_background(
             )
 
 
-@router.message(F.text)
+@router.message(F.text & ~F.text.startswith("/"))
 async def handle_text(message: Message) -> None:
-    """Ловит текстовые сообщения и ссылки."""
+    """Ловит текстовые сообщения и ссылки (не команды)."""
     if message.text is None:
         return
 
