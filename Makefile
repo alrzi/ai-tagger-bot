@@ -1,4 +1,4 @@
-.PHONY: check lint run install
+.PHONY: check lint typecheck run install
 
 # Установка зависимостей
 install:
@@ -7,6 +7,10 @@ install:
 # Проверка кода (аналог swift build)
 check:
 	source .venv/bin/activate && ruff check src/ config/ main.py
+
+# Проверка типов (аналог swift build — строгая проверка)
+typecheck:
+	source .venv/bin/activate && mypy src/ config/ main.py
 
 # Автоисправление
 fix:

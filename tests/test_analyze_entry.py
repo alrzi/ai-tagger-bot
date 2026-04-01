@@ -6,7 +6,7 @@ from typing import Optional
 
 import pytest
 
-from src.domain.entities import ContentType, Entry
+from src.domain.entities import AnalysisResult, ContentType, Entry
 from src.usecases.analyze_entry import AnalyzeEntryUseCase
 
 
@@ -31,16 +31,23 @@ class MockEntryUpdater:
         return entry
 
 
-class MockAIClient:
-    """Мок ИИ-клиента."""
+class MockAnalysisService:
+    """Мок сервиса анализа."""
 
-    def __init__(self, response: str = '{"summary": "Тест", "tags": ["тег"], "type": "article"}') -> None:
-        self.response = response
-        self.generate_called = False
+    def __init__(self, result: AnalysisResult | None = None, should_raise: bool = False) -> None:
+        self.result = result or AnalysisResult(
+            summary="Тест",
+            tags=["тег"],
+            content_type=ContentType.ARTICLE,
+        )
+        self.should_raise = should_raise
+        self.analyze_called = False
 
-    async def generate(self, prompt: str) -> str:
-        self.generate_called = True
-        return self.response
+    async def analyze(self, text: str) -> AnalysisResult:
+        self.analyze_called = True
+        if self.should_raise:
+            raise Exception("Ошибка анализа")
+        return self.result
 
 
 @pytest.fixture
@@ -58,14 +65,20 @@ async def test_analyze_success(sample_entry: Entry) -> None:
     # Given
     reader = MockEntryReader(sample_entry)
     updater = MockEntryUpdater()
-    ai = MockAIClient('{"summary": "Python язык", "tags": ["python"], "type": "article"}')
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, ai_client=ai)
+    service = MockAnalysisService(
+        result=AnalysisResult(
+            summary="Python язык",
+            tags=["python"],
+            content_type=ContentType.ARTICLE,
+        )
+    )
+    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
 
     # When
     result = await use_case.execute(entry_id=1, user_id=123)
 
     # Then
-    assert ai.generate_called is True
+    assert service.analyze_called is True
     assert result.summary == "Python язык"
     assert result.tags == ["python"]
     assert result.content_type == ContentType.ARTICLE
@@ -76,8 +89,8 @@ async def test_analyze_entry_not_found() -> None:
     # Given
     reader = MockEntryReader(None)
     updater = MockEntryUpdater()
-    ai = MockAIClient()
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, ai_client=ai)
+    service = MockAnalysisService()
+    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
 
     # When / Then
     with pytest.raises(ValueError, match="не найдена"):
@@ -90,8 +103,8 @@ async def test_analyze_empty_text() -> None:
     entry = Entry(id=1, user_id=123, raw_text="   ")
     reader = MockEntryReader(entry)
     updater = MockEntryUpdater()
-    ai = MockAIClient()
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, ai_client=ai)
+    service = MockAnalysisService()
+    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
 
     # When / Then
     with pytest.raises(ValueError, match="Нет текста"):
@@ -99,16 +112,35 @@ async def test_analyze_empty_text() -> None:
 
 
 @pytest.mark.asyncio
-async def test_analyze_invalid_json(sample_entry: Entry) -> None:
+async def test_analyze_service_error(sample_entry: Entry) -> None:
     # Given
     reader = MockEntryReader(sample_entry)
     updater = MockEntryUpdater()
-    ai = MockAIClient("not valid json")
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, ai_client=ai)
+    service = MockAnalysisService(should_raise=True)
+    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+
+    # When / Then
+    with pytest.raises(Exception, match="Ошибка анализа"):
+        await use_case.execute(entry_id=1, user_id=123)
+
+
+@pytest.mark.asyncio
+async def test_analyze_applies_result_to_entry(sample_entry: Entry) -> None:
+    # Given
+    reader = MockEntryReader(sample_entry)
+    updater = MockEntryUpdater()
+    result = AnalysisResult(
+        summary="Краткое описание",
+        tags=["тег1", "тег2", "тег3"],
+        content_type=ContentType.TUTORIAL,
+    )
+    service = MockAnalysisService(result=result)
+    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
 
     # When
-    result = await use_case.execute(entry_id=1, user_id=123)
+    entry = await use_case.execute(entry_id=1, user_id=123)
 
-    # Then — fallback значения
-    assert result.summary == "Не удалось проанализировать"
-    assert result.tags == []
+    # Then
+    assert entry.summary == "Краткое описание"
+    assert entry.tags == ["тег1", "тег2", "тег3"]
+    assert entry.content_type == ContentType.TUTORIAL

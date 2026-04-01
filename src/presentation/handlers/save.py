@@ -9,6 +9,7 @@ import re
 from aiogram import F, Router
 from aiogram.types import Message
 
+from src.infrastructure.ai.analysis import OllamaEntryAnalysisService
 from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import async_session_factory
 from src.infrastructure.db.repositories import PostgresEntryRepository
@@ -36,10 +37,11 @@ async def _analyze_in_background(
         async with async_session_factory() as session:
             repo = PostgresEntryRepository(session)
             ollama = OllamaClient()
+            analysis_service = OllamaEntryAnalysisService(ai_client=ollama)
             analyzer = AnalyzeEntryUseCase(
                 reader=repo,
                 updater=repo,
-                ai_client=ollama,
+                analysis_service=analysis_service,
             )
             entry = await analyzer.execute(entry_id, user_id)
 
@@ -58,7 +60,10 @@ async def _analyze_in_background(
                 f"Запись сохранена, но без тегов и резюме."
             )
         except Exception:
-            pass
+            await message.answer(
+                f"⚠️ Не удалось проанализировать запись ID {entry_id}:\n"                
+                f"Запись сохранена, но без тегов и резюме."
+            )
 
 
 @router.message(F.text)

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import re
 from typing import Protocol
 
-from src.domain.entities import ContentType, Entry
-from src.infrastructure.ai.prompts import ANALYSIS_PROMPT
+from src.domain.entities import AnalysisResult, Entry
 
 logger = logging.getLogger(__name__)
 
@@ -25,24 +22,28 @@ class EntryUpdater(Protocol):
     async def save(self, entry: Entry) -> Entry: ...
 
 
-class AIClient(Protocol):
-    """Протокол для ИИ-клиента."""
+class EntryAnalysisService(Protocol):
+    """Протокол сервиса анализа текста.
 
-    async def generate(self, prompt: str) -> str: ...
+    Реализация живёт в infrastructure (OllamaEntryAnalysisService).
+    Use case знает только контракт, не детали реализации.
+    """
+
+    async def analyze(self, text: str) -> AnalysisResult: ...
 
 
 class AnalyzeEntryUseCase:
-    """Сценарий: анализ записи через Ollama → summary + tags."""
+    """Сценарий: анализ записи через ИИ → summary + tags."""
 
     def __init__(
         self,
         reader: EntryReader,
         updater: EntryUpdater,
-        ai_client: AIClient,
+        analysis_service: EntryAnalysisService,
     ) -> None:
         self.reader = reader
         self.updater = updater
-        self.ai_client = ai_client
+        self.analysis_service = analysis_service
 
     async def execute(self, entry_id: int, user_id: int) -> Entry:
         entry = await self.reader.get_by_id(entry_id, user_id)
@@ -52,31 +53,9 @@ class AnalyzeEntryUseCase:
         if not entry.raw_text.strip():
             raise ValueError("Нет текста для анализа")
 
-        prompt = ANALYSIS_PROMPT.format(content=entry.raw_text[:3000])
-        response = await self.ai_client.generate(prompt)
+        # Получаем доменный объект — никакого парсинга здесь
+        result = await self.analysis_service.analyze(entry.raw_text)
 
-        # Извлекаем JSON из ответа (модель может добавить текст вокруг)
-        json_match = re.search(r"\{.*\}", response, re.DOTALL)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-            except json.JSONDecodeError:
-                logger.warning("Не удалось распарсить JSON от ИИ: %s", response[:200])
-                data = {
-                    "summary": "Не удалось проанализировать",
-                    "tags": [],
-                    "type": "unknown",
-                }
-        else:
-            logger.warning("JSON не найден в ответе ИИ: %s", response[:200])
-            data = {
-                "summary": "Не удалось проанализировать",
-                "tags": [],
-                "type": "unknown",
-            }
-
-        entry.summary = data.get("summary", "")
-        entry.tags = data.get("tags", [])
-        entry.content_type = ContentType(data.get("type", "unknown"))
+        entry.apply_analysis(result)
 
         return await self.updater.save(entry)

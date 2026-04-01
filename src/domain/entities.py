@@ -15,6 +15,15 @@ class ContentType(Enum):
     UNKNOWN = "unknown"
 
 
+@dataclass(frozen=True)
+class AnalysisResult:
+    """Результат анализа текста через ИИ. Value object."""
+
+    summary: str
+    tags: list[str]
+    content_type: ContentType
+
+
 @dataclass
 class Entry:
     """Запись пользователя (пост, ссылка, заметка)."""
@@ -32,3 +41,9 @@ class Entry:
 
     def is_processed(self) -> bool:
         return bool(self.summary and self.tags)
+
+    def apply_analysis(self, result: AnalysisResult) -> None:
+        """Применяет результаты анализа к записи."""
+        self.summary = result.summary
+        self.tags = result.tags
+        self.content_type = result.content_type
