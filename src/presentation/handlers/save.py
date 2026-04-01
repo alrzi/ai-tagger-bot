@@ -51,6 +51,14 @@ async def _analyze_in_background(
         )
     except Exception as e:
         logger.warning("Ошибка фонового анализа записи %s: %s", entry_id, e)
+        try:
+            await message.answer(
+                f"⚠️ Не удалось проанализировать запись ID {entry_id}:\n"
+                f"{e}\n"
+                f"Запись сохранена, но без тегов и резюме."
+            )
+        except Exception:
+            pass
 
 
 @router.message(F.text)
