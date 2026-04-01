@@ -44,6 +44,7 @@ class OllamaClient:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
+            "format": "json",
         }
         if system:
             payload["system"] = system

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Protocol
 
 from src.domain.entities import ContentType, Entry
@@ -54,10 +55,20 @@ class AnalyzeEntryUseCase:
         prompt = ANALYSIS_PROMPT.format(content=entry.raw_text[:3000])
         response = await self.ai_client.generate(prompt)
 
-        try:
-            data = json.loads(response)
-        except json.JSONDecodeError:
-            logger.warning("Не удалось распарсить JSON от ИИ: %s", response[:200])
+        # Извлекаем JSON из ответа (модель может добавить текст вокруг)
+        json_match = re.search(r"\{.*\}", response, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                logger.warning("Не удалось распарсить JSON от ИИ: %s", response[:200])
+                data = {
+                    "summary": "Не удалось проанализировать",
+                    "tags": [],
+                    "type": "unknown",
+                }
+        else:
+            logger.warning("JSON не найден в ответе ИИ: %s", response[:200])
             data = {
                 "summary": "Не удалось проанализировать",
                 "tags": [],
