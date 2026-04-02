@@ -11,6 +11,7 @@ from aiogram.types import Message
 from src.infrastructure.ai.embeddings import OllamaEmbeddingService
 from src.infrastructure.db.engine import async_session_factory
 from src.infrastructure.db.repositories import PostgresEntryRepository
+from src.presentation.keyboards.inline import search_results_keyboard
 from src.usecases.search_entries import SearchEntriesUseCase
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ async def cmd_search(message: Message) -> None:
             return
 
         lines = [f"🔍 Найдено {len(results)} записей:\n"]
+        entry_ids: list[int] = []
         for i, (entry, similarity) in enumerate(results, 1):
             tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else "без тегов"
             summary = entry.summary or entry.raw_text[:200]
@@ -60,8 +62,10 @@ async def cmd_search(message: Message) -> None:
                 f"📝 {summary}\n"
                 f"🏷 {tags_str}\n"
             )
+            if entry.id is not None:
+                entry_ids.append(entry.id)
 
-        await message.answer("\n".join(lines))
+        await message.answer("\n".join(lines), reply_markup=search_results_keyboard(entry_ids))
 
     except Exception as e:
         logger.error("Ошибка поиска: %s\n%s", e, traceback.format_exc())

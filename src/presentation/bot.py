@@ -3,6 +3,7 @@
 from aiogram import Bot, Dispatcher
 
 from config.settings import settings
+from src.presentation.handlers.entry import router as entry_router
 from src.presentation.handlers.list import router as list_router
 from src.presentation.handlers.save import router as save_router
 from src.presentation.handlers.search import router as search_router
@@ -19,5 +20,6 @@ def create_bot() -> tuple[Bot, Dispatcher]:
     dp.include_router(save_router)
     dp.include_router(search_router)
     dp.include_router(list_router)
+    dp.include_router(entry_router)
 
     return bot, dp

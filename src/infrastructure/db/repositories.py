@@ -54,10 +54,10 @@ class PostgresEntryRepository:
     ) -> list[tuple[Entry, float]]:
         query = text(
             """
-            SELECT *, 1 - (embedding <=> :vec) AS similarity
+            SELECT *, 1.0 / (1.0 + (embedding <=> :vec)) AS similarity
             FROM entries
             WHERE user_id = :uid AND embedding IS NOT NULL
-            ORDER BY embedding <=> :vec
+            ORDER BY similarity DESC
             LIMIT :lim
             """
         )
