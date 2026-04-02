@@ -6,6 +6,7 @@ from aiogram.types import Message
 from dishka import FromDishka
 
 from src.application.manage_categories import ManageCategoriesUseCase
+from src.domain.exceptions import ValidationError
 from src.presentation.context import TelegramChatContext
 from src.presentation.responders.categories_responder import CategoriesResponder
 
@@ -21,39 +22,14 @@ async def cmd_categories(
 ) -> None:
     """Управление категориями для ромба."""
     ctx = TelegramChatContext(message)
-    args = command.args
 
-    if args is None:
-        # /categories — показать текущие
+    if not command.args:
         categories = await use_case.get(ctx.user_id)
         await responder.respond(categories, ctx)
         return
 
-    parts = args.split(maxsplit=1)
-    subcommand = parts[0].lower()
-
-    if subcommand == "reset":
-        # /categories reset
-        categories = await use_case.reset(ctx.user_id)
+    try:
+        categories = await use_case.handle_command(ctx.user_id, command.args)
         await responder.respond_updated(categories, ctx)
-
-    elif subcommand == "set":
-        # /categories set Кат1 Кат2 Кат3 Кат4 Кат5
-        if len(parts) < 2:
-            await message.answer(
-                "Укажи 5 категорий через пробел.\n"
-                "Пример: /categories set Python AI Здоровье Бизнес Креатив"
-            )
-            return
-
-        names = parts[1].split()
-        categories = await use_case.set(ctx.user_id, names)
-        await responder.respond_updated(categories, ctx)
-
-    else:
-        await message.answer(
-            "Использование:\n"
-            "/categories — показать текущие\n"
-            "/categories set Кат1 Кат2 Кат3 Кат4 Кат5 — установить\n"
-            "/categories reset — сбросить на стандартные"
-        )
+    except ValidationError as exc:
+        await message.answer(str(exc))
