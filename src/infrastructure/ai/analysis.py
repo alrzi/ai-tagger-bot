@@ -8,13 +8,21 @@ from __future__ import annotations
 
 import logging
 
+from pydantic import BaseModel
+
 from src.domain.entities import AnalysisResult, ContentType
 from src.domain.exceptions import AIServiceError
 from src.domain.interfaces import AIClient
-from src.infrastructure.ai.prompts import ANALYSIS_PROMPT
+from src.infrastructure.ai.prompts import ANALYSIS_PROMPT, CATEGORIZE_PROMPT
 from src.infrastructure.ai.schemas import AIAnalysisDTO
 
 logger = logging.getLogger(__name__)
+
+
+class TagCategoryMap(BaseModel):
+    """DTO для парсинга ответа категоризации тегов."""
+
+    model_config = {"extra": "allow"}
 
 
 class OllamaEntryAnalysisService:
@@ -54,3 +62,39 @@ class OllamaEntryAnalysisService:
             tags=tags,
             content_type=content_type,
         )
+
+    async def categorize_tags(
+        self, tags: list[str], categories: list[str]
+    ) -> dict[str, int]:
+        """Определяет категорию для каждого тега.
+
+        Args:
+            tags: Список тегов для категоризации.
+            categories: Список из 5 названий категорий.
+
+        Returns:
+            Словарь {тег: позиция_категории}.
+        """
+        if not tags:
+            return {}
+
+        categories_str = "\n".join(
+            f"{i}: {name}" for i, name in enumerate(categories)
+        )
+        tags_str = ", ".join(tags)
+
+        prompt = CATEGORIZE_PROMPT.format(
+            categories=categories_str,
+            tags=tags_str,
+        )
+
+        try:
+            response = await self.ai_client.generate_structured(prompt, TagCategoryMap)
+            # Преобразуем Pydantic модель в словарь
+            result = response.model_dump()
+            # Преобразуем строковые ключи в теги, а значения в int
+            return {str(k): int(v) for k, v in result.items() if str(k) in tags}
+        except Exception as exc:
+            logger.warning("Ошибка категоризации тегов: %s", exc)
+            # В случае ошибки возвращаем все теги в первую категорию
+            return {tag: 0 for tag in tags}
