@@ -28,7 +28,7 @@ class MockSearcher:
     def __init__(self, results: list[tuple[Entry, float]] | None = None) -> None:
         self.results = results or []
         self.search_called = False
-        self.search_args: tuple = ()
+        self.search_args: tuple[int, list[float], int] = (0, [], 0)
 
     async def search_by_vector(
         self, user_id: int, query_vector: list[float], limit: int = 5

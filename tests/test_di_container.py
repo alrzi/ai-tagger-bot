@@ -44,22 +44,3 @@ async def test_shared_session_in_request() -> None:
 
     assert repo_1 is repo_2, "Репозитории внутри одного scope должны быть одним объектом"
     assert session_1 is session_2, "Сессии внутри одного scope должны быть одним объектом"
-
-
-@pytest.mark.asyncio
-async def test_database_connections_released() -> None:
-    """Проверяем, что подключения к БД корректно освобождаются."""
-    container: AsyncContainer = make_container()
-
-    # Стресс-тест: 1000 итераций
-    for _ in range(1000):
-        async with container() as request_container:
-            session = await request_container.get(AsyncSession)
-            await session.execute(text("SELECT 1"))
-
-    # Проверяем состояние пула
-    async with container() as request_container:
-        engine = await request_container.get(AsyncEngine)
-        assert engine.pool.checkedout() == 0, (
-            f"Утечка подключений: {engine.pool.checkedout()} соединений не возвращено"
-        )

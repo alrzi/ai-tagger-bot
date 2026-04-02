@@ -56,7 +56,7 @@ async def test_analyze_entry_task_not_found() -> None:
 
     assert isinstance(result, dict)
     assert result["status"] == "cancelled"
-    assert "Запись не найдена" in result["reason"]
+    assert "Запись не найдена" in str(result["reason"])
 
 
 @pytest.mark.asyncio
@@ -73,7 +73,7 @@ async def test_analyze_entry_task_validation_error() -> None:
 
     assert isinstance(result, dict)
     assert result["status"] == "cancelled"
-    assert "Нет текста для анализа" in result["reason"]
+    assert "Нет текста для анализа" in str(result["reason"])
 
 
 @pytest.mark.asyncio

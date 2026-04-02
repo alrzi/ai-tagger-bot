@@ -6,13 +6,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TypeVar
 
 import pytest
+from pydantic import BaseModel
 
 from src.domain.entities import AnalysisResult, ContentType
-from src.infrastructure.ai.analysis import AIServiceError, OllamaEntryAnalysisService
+from src.domain.exceptions import AIServiceError
+from src.infrastructure.ai.analysis import OllamaEntryAnalysisService
 from src.infrastructure.ai.schemas import AIAnalysisDTO
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class MockAIClient:
@@ -35,12 +39,14 @@ class MockAIClient:
     async def generate(self, prompt: str) -> str:
         return "{}"
 
-    async def generate_structured(self, prompt: str, schema: type[Any]) -> Any:
+    async def generate_structured(
+        self, prompt: str, schema: type[T], system: str | None = None
+    ) -> T:
         self.generate_structured_called = True
         self.last_prompt = prompt
         if self.should_raise:
             raise ValueError("Модель вернула ошибку")
-        return self.dto
+        return self.dto  # type: ignore[return-value]
 
 
 @pytest.mark.asyncio
