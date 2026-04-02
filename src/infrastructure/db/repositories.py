@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from sqlalchemy import select, text
+from sqlalchemy import Row, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities import ContentType, Entry
@@ -136,21 +136,23 @@ class PostgresEntryRepository:
             created_at=model.created_at,
         )
 
-    def _row_to_entry(self, row: object) -> tuple[Entry, float]:
-        embedding = self._parse_embedding(row.embedding)
+    def _row_to_entry(self, row: Row) -> tuple[Entry, float]:  # type: ignore[type-arg]
+        data = row._mapping
+        embedding = self._parse_embedding(data.get("embedding"))
         entry = Entry(
-            id=row.id,
-            user_id=row.user_id,
-            url=row.url,
-            title=row.title or "",
-            raw_text=row.raw_text or "",
-            summary=row.summary or "",
-            tags=self._parse_tags(row.tags),
-            content_type=ContentType(row.content_type) if row.content_type else ContentType.UNKNOWN,
+            id=data["id"],
+            user_id=data["user_id"],
+            url=data.get("url"),
+            title=data.get("title") or "",
+            raw_text=data.get("raw_text") or "",
+            summary=data.get("summary") or "",
+            tags=self._parse_tags(data.get("tags")),
+            content_type=ContentType(data["content_type"]) if data.get("content_type") else ContentType.UNKNOWN,
             embedding=embedding,
-            created_at=row.created_at,
+            created_at=data["created_at"],
         )
-        return entry, float(row.similarity)
+        similarity = data.get("similarity", 0.0)
+        return entry, float(similarity)
 
     @staticmethod
     def _parse_tags(tags: list[str] | None) -> list[str]:

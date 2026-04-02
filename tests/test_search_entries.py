@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.domain.entities import Entry
-from src.usecases.search_entries import SearchEntriesUseCase
+from src.application.search_entries import SearchEntriesUseCase
 
 
 class MockEmbedder:

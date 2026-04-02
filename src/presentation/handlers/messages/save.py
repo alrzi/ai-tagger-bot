@@ -4,8 +4,10 @@ from aiogram import F, Router
 from aiogram.types import Message
 from dishka import FromDishka
 
+from src.application.save_entry import SaveEntryUseCase
+from src.presentation.context import TelegramChatContext
+from src.presentation.responders.save_responder import SaveEntryResponder
 from src.tasks.worker import analyze_entry_task
-from src.usecases.save_entry import SaveEntryUseCase
 
 router = Router()
 
@@ -14,21 +16,18 @@ router = Router()
 async def handle_text(
     message: Message,
     save_use_case: FromDishka[SaveEntryUseCase],
+    responder: FromDishka[SaveEntryResponder],
 ) -> None:
     """Ловит текстовые сообщения и ссылки (не команды)."""
     if message.text is None:
         return
 
-    user_id = message.from_user.id if message.from_user else 0
+    ctx = TelegramChatContext(message)
     entry = await save_use_case.execute(
-        user_id=user_id,
+        user_id=ctx.user_id,
         text=message.text,
     )
-
-    await message.answer(
-        f"✅ Сохранено! ID: {entry.id}\n"
-        f"⏳ Анализирую через ИИ..."
-    )
+    await responder.respond(entry, ctx)
 
     if entry.id:
-        await analyze_entry_task.kiq(entry_id=entry.id, user_id=user_id)
+        await analyze_entry_task.kiq(entry_id=entry.id, user_id=ctx.user_id)

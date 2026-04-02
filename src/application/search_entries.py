@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.domain.dto import EntryDTO
+from src.domain.entities import Entry
 from src.domain.interfaces import EmbeddingGenerator, VectorSearcher
 
 
@@ -22,7 +22,7 @@ class SearchEntriesUseCase:
         user_id: int,
         query: str,
         limit: int = 5,
-    ) -> list[tuple[EntryDTO, float]]:
+    ) -> list[tuple[Entry, float]]:
+        """Возвращает список (Entry, similarity)."""
         query_vector = await self.embedder.embed(query)
-        results = await self.searcher.search_by_vector(user_id, query_vector, limit)
-        return [(EntryDTO.from_entity(entry), similarity) for entry, similarity in results]
+        return await self.searcher.search_by_vector(user_id, query_vector, limit)

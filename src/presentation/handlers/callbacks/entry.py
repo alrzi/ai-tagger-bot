@@ -4,9 +4,10 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from dishka import FromDishka
 
+from src.application.get_entry import GetEntryUseCase
 from src.domain.exceptions import ParseError
-from src.presentation.presenters.entry_presenter import EntryPresenterProtocol
-from src.usecases.get_entry import GetEntryUseCase
+from src.presentation.context import TelegramChatContext
+from src.presentation.responders.entry_responder import EntryResponder
 
 router = Router()
 
@@ -15,7 +16,7 @@ router = Router()
 async def callback_show_entry(
     callback: CallbackQuery,
     use_case: FromDishka[GetEntryUseCase],
-    presenter: FromDishka[EntryPresenterProtocol],
+    responder: FromDishka[EntryResponder],
 ) -> None:
     """Показать полную запись по ID."""
     if callback.data is None:
@@ -30,9 +31,6 @@ async def callback_show_entry(
     except ValueError:
         raise ParseError("Некорректный ID записи")
 
-    user_id = callback.from_user.id
-    entry = await use_case.execute(entry_id, user_id)
-
-    if callback.message is not None:
-        await callback.message.answer(presenter.format_full(entry))
-    await callback.answer()
+    ctx = TelegramChatContext(callback)
+    entry = await use_case.execute(entry_id, ctx.user_id)
+    await responder.respond(entry, ctx)

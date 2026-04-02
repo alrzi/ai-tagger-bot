@@ -8,7 +8,7 @@ import pytest
 
 from src.domain.entities import Entry
 from src.domain.exceptions import ValidationError
-from src.usecases.save_entry import SaveEntryUseCase
+from src.application.save_entry import SaveEntryUseCase
 
 
 class MockEntryRepository:

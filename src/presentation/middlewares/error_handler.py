@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
@@ -19,10 +18,10 @@ class ErrorHandlerMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        handler: Callable[[TelegramObject, dict[str, object]], Awaitable[object]],
         event: TelegramObject,
-        data: dict[str, Any],
-    ) -> Any:
+        data: dict[str, object],
+    ) -> object | None:
         try:
             return await handler(event, data)
         except AppError as exc:
@@ -33,6 +32,7 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             # Неизвестная ошибка — полный трейсбек
             logger.exception("Unexpected error in handler")
             await self._reply(event, "⚠️ Что-то пошло не так, мы уже чиним")
+        return None
 
     @staticmethod
     async def _reply(event: TelegramObject, text: str) -> None:

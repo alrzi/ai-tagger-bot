@@ -28,11 +28,11 @@ async def analyze_entry_task(entry_id: int, user_id: int) -> dict[str, object]:
     from src.infrastructure.ai.ollama_client import OllamaClient
     from src.infrastructure.db.engine import async_session_factory
     from src.infrastructure.db.repositories import PostgresEntryRepository
-    from src.usecases.analyze_entry import AnalyzeEntryUseCase
+    from src.application.analyze_entry import AnalyzeEntryUseCase
 
     async with async_session_factory() as session:
         repo = PostgresEntryRepository(session)
-        ollama = OllamaClient()
+        ollama = OllamaClient(settings)
         analysis_service = OllamaEntryAnalysisService(ai_client=ollama)
         analyzer = AnalyzeEntryUseCase(
             reader=repo,
@@ -42,7 +42,7 @@ async def analyze_entry_task(entry_id: int, user_id: int) -> dict[str, object]:
         entry = await analyzer.execute(entry_id, user_id)
 
         # Генерация эмбеддинга
-        embedder = OllamaEmbeddingService()
+        embedder = OllamaEmbeddingService(settings)
         text_for_embedding = entry.summary or entry.raw_text
         embedding = await embedder.embed(text_for_embedding[:2000])
         await repo.update_embedding(entry_id, embedding)

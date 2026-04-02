@@ -7,7 +7,7 @@ from typing import Optional
 import pytest
 
 from src.domain.entities import AnalysisResult, ContentType, Entry
-from src.usecases.analyze_entry import AnalyzeEntryUseCase
+from src.application.analyze_entry import AnalyzeEntryUseCase
 
 
 class MockEntryReader:
