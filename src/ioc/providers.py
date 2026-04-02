@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterable
 
+from aiogram import Bot
 from dishka import Provider, Scope, alias, provide
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from config.settings import Settings, settings
 from src.domain.interfaces import (
@@ -25,6 +26,7 @@ from src.application.get_entry import GetEntryUseCase
 from src.application.list_entries import ListEntriesUseCase
 from src.application.save_entry import SaveEntryUseCase
 from src.application.search_entries import SearchEntriesUseCase
+from src.presentation.responders.analyze_result_responder import AnalyzeResultResponder
 from src.presentation.responders.entry_responder import EntryResponder
 from src.presentation.responders.list_responder import ListEntriesResponder
 from src.presentation.responders.save_responder import SaveEntryResponder
@@ -38,9 +40,17 @@ class SettingsProvider(Provider):
     def get_settings(self) -> Settings:
         return settings
 
+    @provide(scope=Scope.APP)
+    def get_bot(self, settings: Settings) -> Bot:
+        return Bot(token=settings.bot_token)
+
 
 class DatabaseProvider(Provider):
     """Провайдер для БД-сессий."""
+
+    @provide(scope=Scope.APP)
+    def get_engine(self) -> AsyncEngine:
+        return db_engine
 
     @provide(scope=Scope.APP)
     def get_factory(self) -> async_sessionmaker[AsyncSession]:
@@ -85,9 +95,12 @@ class AIProvider(Provider):
 
     scope = Scope.REQUEST
 
+    @provide
+    def get_ollama_client(self, settings: Settings) -> OllamaClient:
+        return OllamaClient(settings)
+
     analysis_impl = provide(OllamaEntryAnalysisService)
     embedding_impl = provide(OllamaEmbeddingService)
-    client = provide(OllamaClient)
 
     entry_analysis = alias(source=OllamaEntryAnalysisService, provides=EntryAnalysisService)
     embedder = alias(source=OllamaEmbeddingService, provides=EmbeddingGenerator)
@@ -103,3 +116,4 @@ class ResponderProvider(Provider):
     search_entries_responder = provide(SearchEntriesResponder)
     entry_responder = provide(EntryResponder)
     save_entry_responder = provide(SaveEntryResponder)
+    analyze_result_responder = provide(AnalyzeResultResponder)

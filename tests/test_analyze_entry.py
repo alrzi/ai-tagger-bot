@@ -1,4 +1,4 @@
-"""Тесты для AnalyzeEntryUseCase."""
+"""Тесты для AnalyzeEntryInteractor."""
 
 from __future__ import annotations
 
@@ -7,28 +7,26 @@ from typing import Optional
 import pytest
 
 from src.domain.entities import AnalysisResult, ContentType, Entry
-from src.application.analyze_entry import AnalyzeEntryUseCase
+from src.domain.exceptions import AIServiceError, NotFoundError, ValidationError
+from src.application.analyze_entry import AnalyzeEntryInteractor
 
 
-class MockEntryReader:
-    """Мок-репозиторий для чтения."""
+class MockEntryRepository:
+    """Мок-репозиторий."""
 
     def __init__(self, entry: Entry | None = None) -> None:
         self.entry = entry
+        self.saved_entry: Optional[Entry] = None
 
     async def get_by_id(self, entry_id: int, user_id: int) -> Entry | None:
         return self.entry
 
-
-class MockEntryUpdater:
-    """Мок-репозиторий для обновления."""
-
-    def __init__(self) -> None:
-        self.saved_entry: Optional[Entry] = None
-
     async def save(self, entry: Entry) -> Entry:
         self.saved_entry = entry
         return entry
+
+    async def list_recent(self, user_id: int, limit: int = 10) -> list[Entry]:
+        return []
 
 
 class MockAnalysisService:
@@ -50,6 +48,13 @@ class MockAnalysisService:
         return self.result
 
 
+class MockEmbedder:
+    """Мок генератора эмбеддингов."""
+
+    async def embed(self, text: str) -> list[float]:
+        return [0.1, 0.2, 0.3]
+
+
 @pytest.fixture
 def sample_entry() -> Entry:
     return Entry(
@@ -63,8 +68,7 @@ def sample_entry() -> Entry:
 @pytest.mark.asyncio
 async def test_analyze_success(sample_entry: Entry) -> None:
     # Given
-    reader = MockEntryReader(sample_entry)
-    updater = MockEntryUpdater()
+    repository = MockEntryRepository(sample_entry)
     service = MockAnalysisService(
         result=AnalysisResult(
             summary="Python язык",
@@ -72,10 +76,11 @@ async def test_analyze_success(sample_entry: Entry) -> None:
             content_type=ContentType.ARTICLE,
         )
     )
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
 
     # When
-    result = await use_case.execute(entry_id=1, user_id=123)
+    result = await interactor.execute(entry_id=1, user_id=123)
 
     # Then
     assert service.analyze_called is True
@@ -87,58 +92,80 @@ async def test_analyze_success(sample_entry: Entry) -> None:
 @pytest.mark.asyncio
 async def test_analyze_entry_not_found() -> None:
     # Given
-    reader = MockEntryReader(None)
-    updater = MockEntryUpdater()
+    repository = MockEntryRepository(None)
     service = MockAnalysisService()
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
 
     # When / Then
-    with pytest.raises(ValueError, match="не найдена"):
-        await use_case.execute(entry_id=999, user_id=123)
+    with pytest.raises(NotFoundError, match="не найдена"):
+        await interactor.execute(entry_id=999, user_id=123)
 
 
 @pytest.mark.asyncio
 async def test_analyze_empty_text() -> None:
     # Given
     entry = Entry(id=1, user_id=123, raw_text="   ")
-    reader = MockEntryReader(entry)
-    updater = MockEntryUpdater()
+    repository = MockEntryRepository(entry)
     service = MockAnalysisService()
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
 
     # When / Then
-    with pytest.raises(ValueError, match="Нет текста"):
-        await use_case.execute(entry_id=1, user_id=123)
+    with pytest.raises(ValidationError, match="Нет текста"):
+        await interactor.execute(entry_id=1, user_id=123)
 
 
 @pytest.mark.asyncio
 async def test_analyze_service_error(sample_entry: Entry) -> None:
     # Given
-    reader = MockEntryReader(sample_entry)
-    updater = MockEntryUpdater()
+    repository = MockEntryRepository(sample_entry)
     service = MockAnalysisService(should_raise=True)
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
 
     # When / Then
     with pytest.raises(Exception, match="Ошибка анализа"):
-        await use_case.execute(entry_id=1, user_id=123)
+        await interactor.execute(entry_id=1, user_id=123)
+
+
+@pytest.mark.asyncio
+async def test_analyze_propagates_ai_service_error(sample_entry: Entry) -> None:
+    """AIServiceError пробрасывается из interactor."""
+    # Given
+    repository = MockEntryRepository(sample_entry)
+
+    class FailingAnalysisService:
+        async def analyze(self, text: str) -> AnalysisResult:
+            raise AIServiceError("Не удалось разобрать ответ нейросети")
+
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=FailingAnalysisService(),
+        embedder=embedder,
+    )
+
+    # When / Then
+    with pytest.raises(AIServiceError, match="Не удалось разобрать ответ нейросети"):
+        await interactor.execute(entry_id=1, user_id=123)
 
 
 @pytest.mark.asyncio
 async def test_analyze_applies_result_to_entry(sample_entry: Entry) -> None:
     # Given
-    reader = MockEntryReader(sample_entry)
-    updater = MockEntryUpdater()
+    repository = MockEntryRepository(sample_entry)
     result = AnalysisResult(
         summary="Краткое описание",
         tags=["тег1", "тег2", "тег3"],
         content_type=ContentType.TUTORIAL,
     )
     service = MockAnalysisService(result=result)
-    use_case = AnalyzeEntryUseCase(reader=reader, updater=updater, analysis_service=service)
+    embedder = MockEmbedder()
+    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
 
     # When
-    entry = await use_case.execute(entry_id=1, user_id=123)
+    entry = await interactor.execute(entry_id=1, user_id=123)
 
     # Then
     assert entry.summary == "Краткое описание"

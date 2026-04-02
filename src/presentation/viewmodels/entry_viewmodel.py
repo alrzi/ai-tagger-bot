@@ -33,3 +33,15 @@ class EntryViewModel:
             url=entry.url,
             content_type=entry.content_type.value,
         )
+
+    @property
+    def formatted_tags(self) -> str:
+        """Форматирует теги: '#python #ai' или 'без тегов'."""
+        return " ".join(f"#{t}" for t in self.tags) or "без тегов"
+
+    def truncated_summary(self, limit: int = 100) -> str:
+        """Обрезает summary до лимита."""
+        text = self.summary or self.raw_text
+        if len(text) <= limit:
+            return text
+        return text[:limit] + "..."

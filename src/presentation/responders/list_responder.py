@@ -32,19 +32,9 @@ class ListEntriesResponder:
     def _format(self, entries: list[EntryViewModel]) -> str:
         lines = [f"📋 Последние {len(entries)} записей:"]
         for vm in entries:
-            tags = self._format_tags(vm.tags)
-            summary = self._truncate(
-                vm.summary or vm.raw_text, self._SUMMARY_LIMIT
+            lines.append(
+                f"🆔 {vm.id}\n"
+                f"📝 {vm.truncated_summary(self._SUMMARY_LIMIT)}\n"
+                f"� {vm.formatted_tags}"
             )
-            lines.append(f"🆔 {vm.id}\n📝 {summary}\n🏷 {tags}")
         return "\n\n".join(lines)
-
-    @staticmethod
-    def _format_tags(tags: list[str]) -> str:
-        return " ".join(f"#{t}" for t in tags) or "без тегов"
-
-    @staticmethod
-    def _truncate(text: str, limit: int) -> str:
-        if len(text) <= limit:
-            return text
-        return text[:limit] + "..."

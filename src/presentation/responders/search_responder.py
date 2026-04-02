@@ -41,14 +41,10 @@ class SearchEntriesResponder:
         lines = [f"🔍 Найдено {len(results)} записей:"]
         entry_ids: list[int] = []
         for i, (vm, similarity) in enumerate(results, 1):
-            tags = self._format_tags(vm.tags)
-            summary = self._truncate(
-                vm.summary or vm.raw_text, self._SEARCH_SUMMARY_LIMIT
-            )
             lines.append(
                 f"{i}. 🆔 {vm.id} ({similarity:.0%})\n"
-                f"📝 {summary}\n"
-                f"🏷 {tags}"
+                f"📝 {vm.truncated_summary(self._SEARCH_SUMMARY_LIMIT)}\n"
+                f"🏷 {vm.formatted_tags}"
             )
             if vm.id is not None:
                 entry_ids.append(vm.id)
@@ -61,13 +57,3 @@ class SearchEntriesResponder:
             for id in entry_ids
         ]
         return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-    @staticmethod
-    def _format_tags(tags: list[str]) -> str:
-        return " ".join(f"#{t}" for t in tags) or "без тегов"
-
-    @staticmethod
-    def _truncate(text: str, limit: int) -> str:
-        if len(text) <= limit:
-            return text
-        return text[:limit] + "..."

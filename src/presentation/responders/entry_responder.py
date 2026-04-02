@@ -22,13 +22,12 @@ class EntryResponder:
         await ctx.answer_callback()
 
     def _format(self, vm: EntryViewModel) -> str:
-        tags = self._format_tags(vm.tags)
         parts = [
             f"📝 Запись #{vm.id}",
             "",
             vm.raw_text,
             "",
-            f"🏷 {tags}",
+            f"🏷 {vm.formatted_tags}",
             f"📂 Тип: {vm.content_type}",
         ]
         if vm.url:
@@ -36,7 +35,3 @@ class EntryResponder:
         if vm.summary:
             parts.extend(["", "📋 Резюме:", vm.summary])
         return "\n".join(parts)
-
-    @staticmethod
-    def _format_tags(tags: list[str]) -> str:
-        return " ".join(f"#{t}" for t in tags) or "без тегов"
