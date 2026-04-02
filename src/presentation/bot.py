@@ -12,6 +12,7 @@ from src.presentation.handlers.commands import (
     list_router,
     search_router,
     start_router,
+    stats_router,
     status_router,
 )
 from src.presentation.handlers.messages import save_router
@@ -28,6 +29,7 @@ def create_bot() -> tuple[Bot, Dispatcher]:
     dp.include_router(help_router)
     dp.include_router(status_router)
     dp.include_router(categories_router)
+    dp.include_router(stats_router)
     dp.include_router(save_router)
     dp.include_router(search_router)
     dp.include_router(list_router)

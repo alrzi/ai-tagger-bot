@@ -25,6 +25,7 @@ from src.infrastructure.db.repositories import PostgresEntryRepository
 from src.infrastructure.db.category_repository import PostgresCategoryRepository
 from src.application.analyze_entry import AnalyzeEntryInteractor
 from src.application.get_entry import GetEntryUseCase
+from src.application.get_stats import GetStatsUseCase
 from src.application.list_entries import ListEntriesUseCase
 from src.application.manage_categories import ManageCategoriesUseCase
 from src.application.save_entry import SaveEntryUseCase
@@ -35,6 +36,7 @@ from src.presentation.responders.entry_responder import EntryResponder
 from src.presentation.responders.list_responder import ListEntriesResponder
 from src.presentation.responders.save_responder import SaveEntryResponder
 from src.presentation.responders.search_responder import SearchEntriesResponder
+from src.presentation.responders.stats_responder import StatsResponder
 
 
 class SettingsProvider(Provider):
@@ -92,6 +94,7 @@ class UseCaseProvider(Provider):
     save_entry = provide(SaveEntryUseCase, scope=Scope.REQUEST)
     list_entries = provide(ListEntriesUseCase, scope=Scope.REQUEST)
     get_entry = provide(GetEntryUseCase, scope=Scope.REQUEST)
+    get_stats = provide(GetStatsUseCase, scope=Scope.REQUEST)
     search_entries = provide(SearchEntriesUseCase, scope=Scope.REQUEST)
     analyze_entry = provide(AnalyzeEntryInteractor, scope=Scope.REQUEST)
     manage_categories = provide(ManageCategoriesUseCase, scope=Scope.REQUEST)
@@ -125,3 +128,4 @@ class ResponderProvider(Provider):
     save_entry_responder = provide(SaveEntryResponder)
     analyze_result_responder = provide(AnalyzeResultResponder)
     categories_responder = provide(CategoriesResponder)
+    stats_responder = provide(StatsResponder)
