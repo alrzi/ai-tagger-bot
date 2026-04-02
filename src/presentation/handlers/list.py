@@ -1,48 +1,30 @@
 """Хендлер команды /list — список последних записей."""
 
-from __future__ import annotations
-
-import logging
-
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
+from dishka import FromDishka
 
-from src.infrastructure.db.engine import async_session_factory
-from src.infrastructure.db.repositories import PostgresEntryRepository
+from src.presentation.presenters.entry_presenter import EntryPresenterProtocol
+from src.usecases.list_entries import ListEntriesUseCase
 
-logger = logging.getLogger(__name__)
 router = Router()
 
 
 @router.message(Command("list"))
-async def cmd_list(message: Message) -> None:
+async def cmd_list(
+    message: Message,
+    use_case: FromDishka[ListEntriesUseCase],
+    presenter: FromDishka[EntryPresenterProtocol],
+) -> None:
     """Показать последние записи."""
     user_id = message.from_user.id if message.from_user else 0
+    entries = await use_case.execute(user_id)
 
-    try:
-        async with async_session_factory() as session:
-            repo = PostgresEntryRepository(session)
-            entries = await repo.list_recent(user_id, limit=10)
+    if not entries:
+        await message.answer(
+            "📋 У тебя пока нет записей.\nОтправь текст или ссылку — я сохраню!"
+        )
+        return
 
-        if not entries:
-            await message.answer("📋 У тебя пока нет записей.\nОтправь текст или ссылку — я сохраню!")
-            return
-
-        lines = [f"📋 Последние {len(entries)} записей:\n"]
-        for entry in entries:
-            tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else "без тегов"
-            summary = entry.summary or entry.raw_text[:100]
-            if entry.summary and len(entry.summary) > 100:
-                summary = entry.summary[:100] + "..."
-            lines.append(
-                f"🆔 {entry.id}\n"
-                f"📝 {summary}\n"
-                f"🏷 {tags_str}\n"
-            )
-
-        await message.answer("\n".join(lines))
-
-    except Exception as e:
-        logger.error("Ошибка /list: %s", e)
-        await message.answer(f"❌ Ошибка: {e}")
+    await message.answer(presenter.format_list(entries))

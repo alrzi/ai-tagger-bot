@@ -1,72 +1,39 @@
 """Хендлер команды /search — семантический поиск."""
 
-from __future__ import annotations
-
-import logging
-import traceback
-
 from aiogram import F, Router
 from aiogram.types import Message
+from dishka import FromDishka
 
-from src.infrastructure.ai.embeddings import OllamaEmbeddingService
-from src.infrastructure.db.engine import async_session_factory
-from src.infrastructure.db.repositories import PostgresEntryRepository
 from src.presentation.keyboards.inline import search_results_keyboard
+from src.presentation.presenters.entry_presenter import EntryPresenterProtocol
 from src.usecases.search_entries import SearchEntriesUseCase
 
-logger = logging.getLogger(__name__)
 router = Router()
 
 
 @router.message(F.text.startswith("/search"))
-async def cmd_search(message: Message) -> None:
+async def cmd_search(
+    message: Message,
+    use_case: FromDishka[SearchEntriesUseCase],
+    presenter: FromDishka[EntryPresenterProtocol],
+) -> None:
     """Семантический поиск по записям."""
-    logger.info("Хендлер search сработал, текст: %s", message.text)
-
     if message.text is None:
-        logger.warning("Сообщение без текста, игнорирую")
         return
 
-    # Извлекаем запрос после /search
     query = message.text.replace("/search", "", 1).strip()
     if not query:
-        await message.answer("Использование: /search <запрос>\nПример: /search как найти работу")
+        await message.answer(
+            "Использование: /search <запрос>\nПример: /search как найти работу"
+        )
         return
 
     user_id = message.from_user.id if message.from_user else 0
+    results = await use_case.execute(user_id=user_id, query=query, limit=5)
 
-    try:
-        logger.info("Поиск: '%s', user_id: %s", query, user_id)
+    if not results:
+        await message.answer("🔍 Ничего не найдено. Попробуй другой запрос.")
+        return
 
-        async with async_session_factory() as session:
-            repo = PostgresEntryRepository(session)
-            embedder = OllamaEmbeddingService()
-            use_case = SearchEntriesUseCase(embedder=embedder, searcher=repo)
-            results = await use_case.execute(user_id=user_id, query=query, limit=5)
-
-        logger.info("Найдено записей: %d", len(results))
-
-        if not results:
-            await message.answer("🔍 Ничего не найдено. Попробуй другой запрос.")
-            return
-
-        lines = [f"🔍 Найдено {len(results)} записей:\n"]
-        entry_ids: list[int] = []
-        for i, (entry, similarity) in enumerate(results, 1):
-            tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else "без тегов"
-            summary = entry.summary or entry.raw_text[:200]
-            if entry.summary and len(entry.summary) > 200:
-                summary = entry.summary[:200] + "..."
-            lines.append(
-                f"{i}. 🆔 {entry.id} ({similarity:.0%})\n"
-                f"📝 {summary}\n"
-                f"🏷 {tags_str}\n"
-            )
-            if entry.id is not None:
-                entry_ids.append(entry.id)
-
-        await message.answer("\n".join(lines), reply_markup=search_results_keyboard(entry_ids))
-
-    except Exception as e:
-        logger.error("Ошибка поиска: %s\n%s", e, traceback.format_exc())
-        await message.answer(f"❌ Ошибка поиска: {e}")
+    text, entry_ids = presenter.format_search(results)
+    await message.answer(text, reply_markup=search_results_keyboard(entry_ids))

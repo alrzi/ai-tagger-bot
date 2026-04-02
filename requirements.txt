@@ -1,4 +1,7 @@
 aiogram==3.15.0
+dishka==1.4.2
+taskiq==0.12.1
+taskiq-redis==1.2.2
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
 alembic==1.14.0

@@ -17,6 +17,9 @@ class Settings(BaseSettings):  # type: ignore[misc]
     ollama_url: str = "http://ollama:11434"
     ollama_model: str = "llama3"
 
+    # Redis (для Taskiq)
+    redis_url: str = "redis://redis:6379/0"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

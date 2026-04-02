@@ -1,12 +1,13 @@
 """Хендлер команды /start и /help."""
 
 from aiogram import Router
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
+from dishka import FromDishka
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.ai.ollama_client import OllamaClient
-from src.infrastructure.db.engine import engine
 
 router = Router()
 
@@ -38,12 +39,15 @@ async def cmd_help(message: Message) -> None:
 
 
 @router.message(Command("status"))
-async def cmd_status(message: Message) -> None:
+async def cmd_status(
+    message: Message,
+    session: FromDishka[AsyncSession],
+    ollama: FromDishka[OllamaClient],
+) -> None:
     # Проверяем подключение к БД
     db_status = "❌ Не подключена"
     try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
+        await session.execute(text("SELECT 1"))
         db_status = "✅ Подключена"
     except Exception as e:
         db_status = f"❌ Ошибка: {e}"
@@ -51,7 +55,6 @@ async def cmd_status(message: Message) -> None:
     # Проверяем подключение к Ollama
     ollama_status = "❌ Не подключён"
     try:
-        ollama = OllamaClient()
         if await ollama.health_check():
             models = await ollama.list_models()
             ollama_status = f"✅ Доступен (модели: {', '.join(models[:3])})"

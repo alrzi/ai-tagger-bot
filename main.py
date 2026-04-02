@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from src.presentation.bot import create_bot
+from src.presentation.bot import create_bot, setup_di, setup_middlewares
 
 
 async def main() -> None:
@@ -14,6 +14,9 @@ async def main() -> None:
     logger = logging.getLogger(__name__)
 
     bot, dp = create_bot()
+    setup_di(dp)
+    setup_middlewares(dp)
+
     logger.info("Бот запускается...")
 
     await dp.start_polling(bot)

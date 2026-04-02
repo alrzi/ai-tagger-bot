@@ -7,23 +7,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Protocol, TypeVar
-
-from pydantic import BaseModel
 
 from src.domain.entities import AnalysisResult, ContentType
+from src.domain.interfaces import AIClient
 from src.infrastructure.ai.prompts import ANALYSIS_PROMPT
 from src.infrastructure.ai.schemas import AIAnalysisDTO
 
-T = TypeVar("T", bound=BaseModel)
-
 logger = logging.getLogger(__name__)
-
-
-class AIClient(Protocol):
-    """Протокол для ИИ-клиента."""
-    
-    async def generate_structured(self, prompt: str, schema: type[T]) -> T: ...
 
 
 class AIServiceError(Exception):

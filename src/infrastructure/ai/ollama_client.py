@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel
 
-from config.settings import settings
+from config.settings import Settings
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -15,13 +15,9 @@ T = TypeVar("T", bound=BaseModel)
 class OllamaClient:
     """Async клиент к Ollama API."""
 
-    def __init__(
-        self,
-        base_url: str | None = None,
-        model: str | None = None,
-    ) -> None:
-        self.base_url = (base_url or settings.ollama_url).rstrip("/")
-        self.model = model or settings.ollama_model
+    def __init__(self, settings: Settings) -> None:
+        self.base_url = settings.ollama_url.rstrip("/")
+        self.model = settings.ollama_model
 
     async def health_check(self) -> bool:
         """Проверяет, доступен ли Ollama."""

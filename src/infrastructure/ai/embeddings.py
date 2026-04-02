@@ -2,29 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Protocol, cast
+from typing import cast
 
 import httpx
 
-from config.settings import settings
-
-
-class EmbeddingGenerator(Protocol):
-    """Протокол для генерации эмбеддингов."""
-
-    async def embed(self, text: str) -> list[float]: ...
+from config.settings import Settings
 
 
 class OllamaEmbeddingService:
     """Генерация эмбеддингов через Ollama API."""
 
-    def __init__(
-        self,
-        base_url: str | None = None,
-        model: str | None = None,
-    ) -> None:
-        self.base_url = (base_url or settings.ollama_url).rstrip("/")
-        self.model = model or settings.ollama_model
+    def __init__(self, settings: Settings) -> None:
+        self.base_url = settings.ollama_url.rstrip("/")
+        self.model = settings.ollama_model
 
     async def embed(self, text: str) -> list[float]:
         """Генерирует векторный эмбеддинг для текста."""

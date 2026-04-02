@@ -7,6 +7,7 @@ from typing import Optional
 import pytest
 
 from src.domain.entities import Entry
+from src.domain.exceptions import ValidationError
 from src.usecases.save_entry import SaveEntryUseCase
 
 
@@ -72,7 +73,7 @@ async def test_save_empty_text_raises_error(use_case: SaveEntryUseCase) -> None:
     text = "   "
 
     # When / Then
-    with pytest.raises(ValueError, match="Нет контента"):
+    with pytest.raises(ValidationError, match="Нет контента"):
         await use_case.execute(user_id=user_id, text=text)
 
 
@@ -82,7 +83,7 @@ async def test_save_none_text_raises_error(use_case: SaveEntryUseCase) -> None:
     user_id = 123
 
     # When / Then
-    with pytest.raises(ValueError, match="Нет контента"):
+    with pytest.raises(ValidationError, match="Нет контента"):
         await use_case.execute(user_id=user_id)
 
 

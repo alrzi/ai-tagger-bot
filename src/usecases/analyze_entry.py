@@ -3,33 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Protocol
 
-from src.domain.entities import AnalysisResult, Entry
+from src.domain.entities import Entry
+from src.domain.interfaces import EntryAnalysisService, EntryReader, EntryUpdater
 
 logger = logging.getLogger(__name__)
-
-
-class EntryReader(Protocol):
-    """Протокол для чтения записи."""
-
-    async def get_by_id(self, entry_id: int, user_id: int) -> Entry | None: ...
-
-
-class EntryUpdater(Protocol):
-    """Протокол для обновления записи."""
-
-    async def save(self, entry: Entry) -> Entry: ...
-
-
-class EntryAnalysisService(Protocol):
-    """Протокол сервиса анализа текста.
-
-    Реализация живёт в infrastructure (OllamaEntryAnalysisService).
-    Use case знает только контракт, не детали реализации.
-    """
-
-    async def analyze(self, text: str) -> AnalysisResult: ...
 
 
 class AnalyzeEntryUseCase:
@@ -53,7 +31,6 @@ class AnalyzeEntryUseCase:
         if not entry.raw_text.strip():
             raise ValueError("Нет текста для анализа")
 
-        # Получаем доменный объект — никакого парсинга здесь
         result = await self.analysis_service.analyze(entry.raw_text)
 
         entry.apply_analysis(result)

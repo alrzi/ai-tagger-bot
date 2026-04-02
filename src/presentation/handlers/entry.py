@@ -1,60 +1,38 @@
 """Хендлер callback для отображения полной записи."""
 
-from __future__ import annotations
-
-import logging
-
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from dishka import FromDishka
 
-from src.infrastructure.db.engine import async_session_factory
-from src.infrastructure.db.repositories import PostgresEntryRepository
+from src.domain.exceptions import ParseError
+from src.presentation.presenters.entry_presenter import EntryPresenterProtocol
+from src.usecases.get_entry import GetEntryUseCase
 
-logger = logging.getLogger(__name__)
 router = Router()
 
 
 @router.callback_query(F.data.startswith("entry:"))
-async def callback_show_entry(callback: CallbackQuery) -> None:
+async def callback_show_entry(
+    callback: CallbackQuery,
+    use_case: FromDishka[GetEntryUseCase],
+    presenter: FromDishka[EntryPresenterProtocol],
+) -> None:
     """Показать полную запись по ID."""
     if callback.data is None:
-        await callback.answer("Некорректный ID записи", show_alert=True)
-        return
+        raise ParseError("Некорректный ID записи")
+
+    parts = callback.data.split(":")
+    if len(parts) < 2:
+        raise ParseError("Некорректный ID записи")
 
     try:
-        entry_id = int(callback.data.split(":")[1])
-    except (ValueError, IndexError):
-        await callback.answer("Некорректный ID записи", show_alert=True)
-        return
+        entry_id = int(parts[1])
+    except ValueError:
+        raise ParseError("Некорректный ID записи")
 
     user_id = callback.from_user.id
+    entry = await use_case.execute(entry_id, user_id)
 
-    try:
-        async with async_session_factory() as session:
-            repo = PostgresEntryRepository(session)
-            entry = await repo.get_by_id(entry_id, user_id)
-
-        if entry is None:
-            await callback.answer("Запись не найдена", show_alert=True)
-            return
-
-        # Форматируем полный текст
-        tags_str = " ".join(f"#{t}" for t in entry.tags) if entry.tags else "без тегов"
-        full_text = (
-            f"📝 Запись #{entry.id}\n\n"
-            f"{entry.raw_text}\n\n"
-            f"🏷 {tags_str}\n"
-            f"📂 Тип: {entry.content_type.value}\n"
-        )
-        if entry.url:
-            full_text += f"🔗 {entry.url}\n"
-        if entry.summary:
-            full_text += f"\n📋 Резюме:\n{entry.summary}\n"
-
-        if callback.message is not None:
-            await callback.message.answer(full_text)
-        await callback.answer()
-
-    except Exception as e:
-        logger.error("Ошибка отображения записи: %s", e)
-        await callback.answer("Произошла ошибка при загрузке записи", show_alert=True)
+    if callback.message is not None:
+        await callback.message.answer(presenter.format_full(entry))
+    await callback.answer()
