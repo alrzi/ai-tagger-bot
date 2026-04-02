@@ -12,10 +12,7 @@ from src.domain.interfaces import (
     AIClient,
     EmbeddingGenerator,
     EntryAnalysisService,
-    EntryReader,
     EntryRepository,
-    EntrySaver,
-    EntryUpdater,
     VectorSearcher,
 )
 from src.infrastructure.ai.analysis import OllamaEntryAnalysisService
@@ -23,7 +20,7 @@ from src.infrastructure.ai.embeddings import OllamaEmbeddingService
 from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import engine as db_engine
 from src.infrastructure.db.repositories import PostgresEntryRepository
-from src.application.analyze_entry import AnalyzeEntryUseCase
+from src.application.analyze_entry import AnalyzeEntryInteractor
 from src.application.get_entry import GetEntryUseCase
 from src.application.list_entries import ListEntriesUseCase
 from src.application.save_entry import SaveEntryUseCase
@@ -70,9 +67,6 @@ class RepositoryProvider(Provider):
     repo_impl = provide(PostgresEntryRepository)
 
     entry_repo = alias(source=PostgresEntryRepository, provides=EntryRepository)
-    entry_saver = alias(source=PostgresEntryRepository, provides=EntrySaver)
-    entry_reader = alias(source=PostgresEntryRepository, provides=EntryReader)
-    entry_updater = alias(source=PostgresEntryRepository, provides=EntryUpdater)
     vector_searcher = alias(source=PostgresEntryRepository, provides=VectorSearcher)
 
 
@@ -83,7 +77,7 @@ class UseCaseProvider(Provider):
     list_entries = provide(ListEntriesUseCase, scope=Scope.REQUEST)
     get_entry = provide(GetEntryUseCase, scope=Scope.REQUEST)
     search_entries = provide(SearchEntriesUseCase, scope=Scope.REQUEST)
-    analyze_entry = provide(AnalyzeEntryUseCase, scope=Scope.REQUEST)
+    analyze_entry = provide(AnalyzeEntryInteractor, scope=Scope.REQUEST)
 
 
 class AIProvider(Provider):

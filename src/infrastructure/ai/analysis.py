@@ -9,15 +9,12 @@ from __future__ import annotations
 import logging
 
 from src.domain.entities import AnalysisResult, ContentType
+from src.domain.exceptions import AIServiceError
 from src.domain.interfaces import AIClient
 from src.infrastructure.ai.prompts import ANALYSIS_PROMPT
 from src.infrastructure.ai.schemas import AIAnalysisDTO
 
 logger = logging.getLogger(__name__)
-
-
-class AIServiceError(Exception):
-    """Ошибка при взаимодействии с ИИ-сервисом."""
 
 
 class OllamaEntryAnalysisService:

@@ -11,27 +11,11 @@ from src.domain.entities import AnalysisResult, Entry
 T = TypeVar("T", bound=BaseModel)
 
 
-class EntryReader(Protocol):
-    """Протокол для чтения записи."""
+class EntryRepository(Protocol):
+    """Протокол для работы с записями."""
 
     async def get_by_id(self, entry_id: int, user_id: int) -> Entry | None: ...
-
-
-class EntryUpdater(Protocol):
-    """Протокол для обновления записи."""
-
     async def save(self, entry: Entry) -> Entry: ...
-
-
-class EntrySaver(Protocol):
-    """Протокол для сохранения записи."""
-
-    async def save(self, entry: Entry) -> Entry: ...
-
-
-class EntryRepository(Protocol):
-    """Протокол для получения записей."""
-
     async def list_recent(self, user_id: int, limit: int = 10) -> list[Entry]: ...
 
 

@@ -19,3 +19,7 @@ class NotFoundError(AppError):
 
 class ParseError(AppError):
     """Ошибка парсинга внешних данных."""
+
+
+class AIServiceError(AppError):
+    """Ошибка при взаимодействии с ИИ-сервисом."""

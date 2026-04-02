@@ -29,5 +29,5 @@ async def cmd_search(
         return
 
     ctx = TelegramChatContext(message)
-    results = await use_case.execute(user_id=ctx.user_id, query=query, limit=5)
+    results = await use_case.execute(user_id=ctx.user_id, query=query, limit=3)
     await responder.respond(results, ctx)

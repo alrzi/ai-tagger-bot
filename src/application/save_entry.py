@@ -6,7 +6,7 @@ import logging
 
 from src.domain.entities import ContentType, Entry
 from src.domain.exceptions import ValidationError
-from src.domain.interfaces import EntrySaver
+from src.domain.interfaces import EntryRepository
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class SaveEntryUseCase:
 
     def __init__(
         self,
-        repository: EntrySaver,
+        repository: EntryRepository,
     ) -> None:
         self.repository = repository
 

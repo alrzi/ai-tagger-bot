@@ -47,3 +47,8 @@ class Entry:
         self.summary = result.summary
         self.tags = result.tags
         self.content_type = result.content_type
+
+    def get_text_for_embedding(self) -> str:
+        """Возвращает текст для генерации эмбеддинга."""
+        text = self.summary or self.raw_text
+        return text[:2000]
