@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from config.settings import Settings, settings
 from src.domain.interfaces import (
     AIClient,
+    CategoryRepository,
     EmbeddingGenerator,
     EntryAnalysisService,
     EntryRepository,
@@ -21,12 +22,15 @@ from src.infrastructure.ai.embeddings import OllamaEmbeddingService
 from src.infrastructure.ai.ollama_client import OllamaClient
 from src.infrastructure.db.engine import engine as db_engine
 from src.infrastructure.db.repositories import PostgresEntryRepository
+from src.infrastructure.db.category_repository import PostgresCategoryRepository
 from src.application.analyze_entry import AnalyzeEntryInteractor
 from src.application.get_entry import GetEntryUseCase
 from src.application.list_entries import ListEntriesUseCase
+from src.application.manage_categories import ManageCategoriesUseCase
 from src.application.save_entry import SaveEntryUseCase
 from src.application.search_entries import SearchEntriesUseCase
 from src.presentation.responders.analyze_result_responder import AnalyzeResultResponder
+from src.presentation.responders.categories_responder import CategoriesResponder
 from src.presentation.responders.entry_responder import EntryResponder
 from src.presentation.responders.list_responder import ListEntriesResponder
 from src.presentation.responders.save_responder import SaveEntryResponder
@@ -75,9 +79,11 @@ class RepositoryProvider(Provider):
     scope = Scope.REQUEST
 
     repo_impl = provide(PostgresEntryRepository)
+    category_repo_impl = provide(PostgresCategoryRepository)
 
     entry_repo = alias(source=PostgresEntryRepository, provides=EntryRepository)
     vector_searcher = alias(source=PostgresEntryRepository, provides=VectorSearcher)
+    category_repo = alias(source=PostgresCategoryRepository, provides=CategoryRepository)
 
 
 class UseCaseProvider(Provider):
@@ -88,6 +94,7 @@ class UseCaseProvider(Provider):
     get_entry = provide(GetEntryUseCase, scope=Scope.REQUEST)
     search_entries = provide(SearchEntriesUseCase, scope=Scope.REQUEST)
     analyze_entry = provide(AnalyzeEntryInteractor, scope=Scope.REQUEST)
+    manage_categories = provide(ManageCategoriesUseCase, scope=Scope.REQUEST)
 
 
 class AIProvider(Provider):
@@ -117,3 +124,4 @@ class ResponderProvider(Provider):
     entry_responder = provide(EntryResponder)
     save_entry_responder = provide(SaveEntryResponder)
     analyze_result_responder = provide(AnalyzeResultResponder)
+    categories_responder = provide(CategoriesResponder)

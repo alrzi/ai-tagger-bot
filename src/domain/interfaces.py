@@ -6,7 +6,7 @@ from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from src.domain.entities import AnalysisResult, Entry
+from src.domain.entities import AnalysisResult, Entry, UserCategories
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -17,6 +17,15 @@ class EntryRepository(Protocol):
     async def get_by_id(self, entry_id: int, user_id: int) -> Entry | None: ...
     async def save(self, entry: Entry) -> Entry: ...
     async def list_recent(self, user_id: int, limit: int = 10) -> list[Entry]: ...
+
+
+class CategoryRepository(Protocol):
+    """Протокол для работы с категориями пользователя."""
+
+    async def get_categories(self, user_id: int) -> UserCategories: ...
+    async def set_categories(self, categories: UserCategories) -> None: ...
+    async def get_cached_position(self, user_id: int, tag: str) -> int | None: ...
+    async def cache_position(self, user_id: int, tag: str, position: int) -> None: ...
 
 
 class EmbeddingGenerator(Protocol):

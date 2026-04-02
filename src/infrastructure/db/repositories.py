@@ -133,6 +133,7 @@ class PostgresEntryRepository:
             tags=self._parse_tags(model.tags),
             content_type=ContentType(model.content_type) if model.content_type else ContentType.UNKNOWN,
             embedding=self._parse_embedding(model.embedding),
+            is_read=model.is_read,
             created_at=model.created_at,
         )
 

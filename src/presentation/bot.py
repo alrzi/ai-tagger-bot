@@ -7,6 +7,7 @@ from config.settings import settings
 from src.ioc.container import make_container
 from src.presentation.handlers.callbacks import entry_callback_router
 from src.presentation.handlers.commands import (
+    categories_router,
     help_router,
     list_router,
     search_router,
@@ -26,6 +27,7 @@ def create_bot() -> tuple[Bot, Dispatcher]:
     dp.include_router(start_router)
     dp.include_router(help_router)
     dp.include_router(status_router)
+    dp.include_router(categories_router)
     dp.include_router(save_router)
     dp.include_router(search_router)
     dp.include_router(list_router)
