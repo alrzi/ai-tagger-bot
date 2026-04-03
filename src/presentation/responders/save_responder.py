@@ -15,8 +15,5 @@ class SaveEntryResponder:
         ctx: BotContext,
     ) -> None:
         """Отправляет подтверждение сохранения."""
-        text = (
-            f"✅ Сохранено! ID: {entry.id}\n"
-            f"⏳ Анализирую через ИИ..."
-        )
+        text = "✅ Сохранено!\n⏳ Анализирую через ИИ..."
         await ctx.send_message(text)
