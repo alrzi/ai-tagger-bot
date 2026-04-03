@@ -3,6 +3,9 @@
 import asyncio
 import logging
 
+from redis.asyncio import Redis
+
+from config.settings import settings
 from src.presentation.bot import create_bot, setup_di, setup_middlewares
 
 
@@ -15,7 +18,10 @@ async def main() -> None:
 
     bot, dp = create_bot()
     setup_di(dp)
-    setup_middlewares(dp)
+    
+    # Создаём Redis для middleware
+    redis = Redis.from_url(settings.redis_url)
+    setup_middlewares(dp, redis)
 
     logger.info("Бот запускается...")
 

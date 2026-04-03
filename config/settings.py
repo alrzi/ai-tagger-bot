@@ -3,7 +3,7 @@
 from pydantic_settings import BaseSettings
 
 
-class Settings(BaseSettings):  # type: ignore[misc]
+class Settings(BaseSettings):
     # Telegram
     bot_token: str
 

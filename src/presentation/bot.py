@@ -16,7 +16,9 @@ from src.presentation.handlers.commands import (
     status_router,
 )
 from src.presentation.handlers.messages import save_router
+from src.presentation.middlewares.debounce import DebounceMiddleware
 from src.presentation.middlewares.error_handler import ErrorHandlerMiddleware
+from src.presentation.middlewares.rate_limiter import RateLimitMiddleware
 
 
 def create_bot() -> tuple[Bot, Dispatcher]:
@@ -44,7 +46,14 @@ def setup_di(dp: Dispatcher) -> None:
     setup_dishka(container=container, router=dp, auto_inject=True)
 
 
-def setup_middlewares(dp: Dispatcher) -> None:
+def setup_middlewares(dp: Dispatcher, redis: object) -> None:
     """Настраивает middleware."""
+    # Rate limiting (отсекаем спам)
+    dp.message.middleware(RateLimitMiddleware(redis, max_messages=10, window=60))  # type: ignore[arg-type]
+    
+    # Debouncing (склеиваем сообщения)
+    dp.message.middleware(DebounceMiddleware(redis, delay=2.0))  # type: ignore[arg-type]
+    
+    # Error handling
     dp.message.middleware(ErrorHandlerMiddleware())
     dp.callback_query.middleware(ErrorHandlerMiddleware())

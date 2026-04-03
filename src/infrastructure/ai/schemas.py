@@ -9,7 +9,7 @@ from __future__ import annotations
 from pydantic import BaseModel, field_validator
 
 
-class AIAnalysisDTO(BaseModel):  # type: ignore[misc]
+class AIAnalysisDTO(BaseModel):
     """DTO для парсинга JSON-ответа от модели анализа.
 
     Живёт только в infrastructure-слое. Через to_domain()
@@ -32,9 +32,7 @@ class AIAnalysisDTO(BaseModel):  # type: ignore[misc]
         """Модель может вернуть tags как строку через запятую."""
         if isinstance(v, str):
             return [t.strip() for t in v.split(",") if t.strip()]
-        if isinstance(v, list):
-            return v
-        return [str(v)]  # type: ignore[unreachable]
+        return v
 
     def to_domain(self) -> tuple[str, list[str], str]:
         """Маппинг в кортеж для создания доменного AnalysisResult.

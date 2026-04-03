@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.domain.entities import AnalysisResult, ContentType
 from src.domain.exceptions import AIServiceError
@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 class TagCategoryMap(BaseModel):
     """DTO для парсинга ответа категоризации тегов."""
-
-    model_config = {"extra": "allow"}
-
+    
+    model_config = ConfigDict(extra="allow")
 
 class OllamaEntryAnalysisService:
     """Анализ текста записи через Ollama.

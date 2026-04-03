@@ -55,6 +55,13 @@ class MockEmbedder:
         return [0.1, 0.2, 0.3]
 
 
+class MockCategoryRepository:
+    """Мок репозитория категорий."""
+
+    async def get_by_id(self, category_id: int) -> Optional[str]:
+        return None
+
+
 @pytest.fixture
 def sample_entry() -> Entry:
     return Entry(
@@ -77,7 +84,13 @@ async def test_analyze_success(sample_entry: Entry) -> None:
         )
     )
     embedder = MockEmbedder()
-    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
+    category_repository = MockCategoryRepository()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=service,
+        embedder=embedder,
+        category_repository=category_repository,
+    )
 
     # When
     result = await interactor.execute(entry_id=1, user_id=123)
@@ -95,7 +108,13 @@ async def test_analyze_entry_not_found() -> None:
     repository = MockEntryRepository(None)
     service = MockAnalysisService()
     embedder = MockEmbedder()
-    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
+    category_repository = MockCategoryRepository()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=service,
+        embedder=embedder,
+        category_repository=category_repository,
+    )
 
     # When / Then
     with pytest.raises(NotFoundError, match="не найдена"):
@@ -109,7 +128,13 @@ async def test_analyze_empty_text() -> None:
     repository = MockEntryRepository(entry)
     service = MockAnalysisService()
     embedder = MockEmbedder()
-    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
+    category_repository = MockCategoryRepository()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=service,
+        embedder=embedder,
+        category_repository=category_repository,
+    )
 
     # When / Then
     with pytest.raises(ValidationError, match="Нет текста"):
@@ -122,7 +147,13 @@ async def test_analyze_service_error(sample_entry: Entry) -> None:
     repository = MockEntryRepository(sample_entry)
     service = MockAnalysisService(should_raise=True)
     embedder = MockEmbedder()
-    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
+    category_repository = MockCategoryRepository()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=service,
+        embedder=embedder,
+        category_repository=category_repository,
+    )
 
     # When / Then
     with pytest.raises(Exception, match="Ошибка анализа"):
@@ -134,6 +165,7 @@ async def test_analyze_propagates_ai_service_error(sample_entry: Entry) -> None:
     """AIServiceError пробрасывается из interactor."""
     # Given
     repository = MockEntryRepository(sample_entry)
+    category_repository = MockCategoryRepository()
 
     class FailingAnalysisService:
         async def analyze(self, text: str) -> AnalysisResult:
@@ -144,6 +176,7 @@ async def test_analyze_propagates_ai_service_error(sample_entry: Entry) -> None:
         repository=repository,
         analysis_service=FailingAnalysisService(),
         embedder=embedder,
+        category_repository=category_repository,
     )
 
     # When / Then
@@ -162,7 +195,13 @@ async def test_analyze_applies_result_to_entry(sample_entry: Entry) -> None:
     )
     service = MockAnalysisService(result=result)
     embedder = MockEmbedder()
-    interactor = AnalyzeEntryInteractor(repository=repository, analysis_service=service, embedder=embedder)
+    category_repository = MockCategoryRepository()
+    interactor = AnalyzeEntryInteractor(
+        repository=repository,
+        analysis_service=service,
+        embedder=embedder,
+        category_repository=category_repository,
+    )
 
     # When
     entry = await interactor.execute(entry_id=1, user_id=123)
