@@ -48,7 +48,7 @@ class OllamaClient:
         Ollama получает схему через параметр format и гарантирует
         валидный JSON нужной структуры.
         """
-        payload: dict[str, Any] = {  # type: ignore[misc]
+        payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,

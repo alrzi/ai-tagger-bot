@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck run install
+.PHONY: check lint typecheck run install verify check-di
 
 # Установка зависимостей
 install:
@@ -19,3 +19,10 @@ fix:
 # Запуск бота
 run:
 	source .venv/bin/activate && python main.py
+
+# Проверка DI контейнера
+check-di:
+	source .venv/bin/activate && python scripts/check_di.py
+
+# Полная проверка
+verify: check typecheck check-di
