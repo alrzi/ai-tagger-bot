@@ -8,3 +8,4 @@ build/
 .mypy_cache/
 .pytest_cache/
 ARCHITECTURE.md
+CLINE.md

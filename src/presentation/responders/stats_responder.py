@@ -24,7 +24,9 @@ class StatsResponder:
             count = stats.get(i, 0)
             emoji = self._category_emoji(i)
             bar = self._progress_bar(count, total)
-            lines.append(f"{emoji} {name}: {count} {bar}")
+            lines.append(f"{emoji} {name}: {count}")
+            lines.append(f"{bar}")
+            lines.append("")
 
         await ctx.send_message("\n".join(lines))
 
@@ -36,9 +38,11 @@ class StatsResponder:
 
     @staticmethod
     def _progress_bar(count: int, total: int) -> str:
-        """Возвращает текстовый прогресс-бар."""
+        """Возвращает эмодзи-прогресс-бар с процентом."""
         if total == 0:
             return ""
         ratio = count / total
         filled = int(ratio * 10)
-        return "█" * filled + "░" * (10 - filled)
+        bar = "🟩" * filled + "⬜" * (10 - filled)
+        percent = round(ratio * 100)
+        return f"{bar} {percent}%"
