@@ -9,33 +9,25 @@ import httpx
 from config.settings import Settings
 
 
-class OllamaEmbeddingService:
-    """Генерация эмбеддингов через Ollama API."""
+class NomicEmbeddingService:
+    """Генерация эмбеддингов через локальный Ollama."""
 
     def __init__(self, settings: Settings) -> None:
         self.base_url = settings.ollama_url.rstrip("/")
-        self.model = settings.ollama_model
+        self.model = settings.ollama_embedding_model
 
     async def embed(self, text: str) -> list[float]:
         """Генерирует векторный эмбеддинг для текста."""
         async with httpx.AsyncClient() as client:
-            # Пробуем новый endpoint /api/embed (Ollama 0.1.26+)
-            try:
-                resp = await client.post(
-                    f"{self.base_url}/api/embed",
-                    json={"model": self.model, "input": text[:2000]},
-                    timeout=60,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                # /api/embed возвращает {"embeddings": [[...]]}
-                return cast(list[float], data["embeddings"][0])
-            except (KeyError, IndexError):
-                # Fallback на старый endpoint /api/embeddings
-                resp = await client.post(
-                    f"{self.base_url}/api/embeddings",
-                    json={"model": self.model, "prompt": text[:2000]},
-                    timeout=60,
-                )
-                resp.raise_for_status()
-                return cast(list[float], resp.json()["embedding"])
+            resp = await client.post(
+                f"{self.base_url}/api/embeddings",
+                json={
+                    "model": self.model,
+                    "prompt": text[:8000],
+                },
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return cast(list[float], data["embedding"])
+

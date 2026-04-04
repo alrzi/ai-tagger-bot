@@ -12,13 +12,13 @@ from pydantic import BaseModel, field_validator
 class AIAnalysisDTO(BaseModel):
     """DTO для парсинга JSON-ответа от модели анализа.
 
-    Живёт только в infrastructure-слое. Через to_domain()
+    Живёт только в infrastructure-слоя. Через to_domain()
     маппится в доменный AnalysisResult.
     """
 
     summary: str | list[str]
     tags: list[str] | str
-    type: str
+    category: str
 
     @field_validator("summary", mode="before")
     def clean_summary(cls, v: str | list[str]) -> str:
@@ -37,11 +37,11 @@ class AIAnalysisDTO(BaseModel):
     def to_domain(self) -> tuple[str, list[str], str]:
         """Маппинг в кортеж для создания доменного AnalysisResult.
 
-        Возвращает (summary, tags, content_type_str).
+        Возвращает (summary, tags, category).
         Не импортирует доменные типы, чтобы не создавать циклических зависимостей.
         """
         return (
             self.summary if isinstance(self.summary, str) else str(self.summary),
             self.tags if isinstance(self.tags, list) else [str(self.tags)],
-            self.type,
+            self.category,
         )

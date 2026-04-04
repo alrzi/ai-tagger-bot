@@ -20,7 +20,6 @@ class EntryViewModel:
     summary: str | None
     tags: list[str]
     url: str | None
-    content_type: str
 
     @classmethod
     def from_entity(cls, entry: Entry) -> EntryViewModel:
@@ -31,7 +30,17 @@ class EntryViewModel:
             summary=entry.summary,
             tags=entry.tags or [],
             url=entry.url,
-            content_type=entry.content_type.value,
+        )
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> EntryViewModel:
+        """Создаёт ViewModel напрямую из результата поиска БД."""
+        return cls(
+            id=data.get("id"),  # type: ignore[arg-type]
+            raw_text=data.get("raw_text", ""),  # type: ignore[arg-type]
+            summary=data.get("summary"),  # type: ignore[arg-type]
+            tags=data.get("tags", []),  # type: ignore[arg-type]
+            url=data.get("url"),  # type: ignore[arg-type]
         )
 
     @property

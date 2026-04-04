@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Ollama
     ollama_url: str = "http://ollama:11434"
     ollama_model: str = "llama3"
+    ollama_embedding_model: str = "nomic-embed-text"
 
     # Redis (для Taskiq)
     redis_url: str = "redis://redis:6379/0"

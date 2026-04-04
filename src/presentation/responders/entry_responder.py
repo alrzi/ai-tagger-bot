@@ -28,7 +28,6 @@ class EntryResponder:
             vm.raw_text,
             "",
             f"🏷 {vm.formatted_tags}",
-            f"📂 Тип: {vm.content_type}",
         ]
         if vm.url:
             parts.append(f"🔗 {vm.url}")

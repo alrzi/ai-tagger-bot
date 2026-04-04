@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import pytest
 
 from src.domain.entities import Entry
@@ -15,14 +13,27 @@ class MockEntryRepository:
     """Мок-репозиторий для тестов."""
 
     def __init__(self) -> None:
-        self.saved_entry: Optional[Entry] = None
-        self.save_called = False
+        self.saved: list[Entry] = []
 
     async def save(self, entry: Entry) -> Entry:
-        self.save_called = True
-        entry.id = 1
-        self.saved_entry = entry
+        entry.id = len(self.saved) + 1
+        self.saved.append(entry)
         return entry
+    
+    async def get_by_id(self, entry_id: int, user_id: int) -> Entry | None:
+        return next((e for e in self.saved if e.id == entry_id and e.user_id == user_id), None)
+    
+    async def list_recent(self, user_id: int, limit: int = 10) -> list[Entry]:
+        return list(reversed([e for e in self.saved if e.user_id == user_id][-limit:]))
+    
+    async def search_by_vector(self, user_id: int, query_vector: list[float], limit: int = 5) -> list[tuple[Entry, float]]:
+        return []
+    
+    async def search_by_tags(self, user_id: int, tags: list[str], limit: int = 10) -> list[Entry]:
+        return []
+    
+    async def delete(self, entry_id: int, user_id: int) -> bool:
+        return True
 
 
 @pytest.fixture
@@ -45,7 +56,7 @@ async def test_save_text_success(use_case: SaveEntryUseCase, mock_repo: MockEntr
     entry = await use_case.execute(user_id=user_id, text=text)
 
     # Then
-    assert mock_repo.save_called is True
+    assert len(mock_repo.saved) == 1
     assert entry.id == 1
     assert entry.user_id == 123
     assert entry.raw_text == "Привет мир"
@@ -100,6 +111,6 @@ async def test_save_preserves_tags() -> None:
     entry.summary = "Тестовое резюме"
 
     # Then — теги должны сохраниться
-    assert repo.saved_entry is not None
-    assert repo.saved_entry.tags == ["python", "тестирование"]
-    assert repo.saved_entry.summary == "Тестовое резюме"
+    assert len(repo.saved) > 0
+    assert repo.saved[0].tags == ["python", "тестирование"]
+    assert repo.saved[0].summary == "Тестовое резюме"

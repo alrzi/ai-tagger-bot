@@ -14,6 +14,7 @@ from src.presentation.handlers.commands import (
     start_router,
     stats_router,
     status_router,
+    tags_router,
 )
 from src.presentation.handlers.messages import save_router
 from src.presentation.middlewares.debounce import DebounceMiddleware
@@ -35,6 +36,7 @@ def create_bot() -> tuple[Bot, Dispatcher]:
     dp.include_router(save_router)
     dp.include_router(search_router)
     dp.include_router(list_router)
+    dp.include_router(tags_router)
     dp.include_router(entry_callback_router)
 
     return bot, dp

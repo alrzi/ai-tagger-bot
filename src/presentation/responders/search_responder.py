@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from src.domain.entities import Entry
+
 from src.presentation.context import BotContext
 from src.presentation.viewmodels.entry_viewmodel import EntryViewModel
 
@@ -16,7 +16,7 @@ class SearchEntriesResponder:
 
     async def respond(
         self,
-        results: list[tuple[Entry, float]],
+        results: list[dict[str, object]],
         ctx: BotContext,
     ) -> None:
         """Отправляет отформатированные результаты поиска."""
@@ -27,8 +27,8 @@ class SearchEntriesResponder:
             return
 
         view_models = [
-            (EntryViewModel.from_entity(entry), similarity)
-            for entry, similarity in results
+            (EntryViewModel.from_dict(result), result.get("distance", 0.0), result.get("chunk_text", ""))
+            for result in results
         ]
         text, entry_ids = self._format(view_models)
         keyboard = self._build_keyboard(entry_ids)
@@ -36,13 +36,16 @@ class SearchEntriesResponder:
 
     def _format(
         self,
-        results: list[tuple[EntryViewModel, float]],
+        results: list[tuple[EntryViewModel, object, object]],
     ) -> tuple[str, list[int]]:
         lines = [f"🔍 Найдено {len(results)} записей:"]
         entry_ids: list[int] = []
-        for i, (vm, similarity) in enumerate(results, 1):
+        for i, (vm, distance, chunk_text) in enumerate(results, 1):
+            chunk_text = str(chunk_text)
+            distance = float(distance)  # type: ignore[arg-type]
             lines.append(
-                f"{i}. 🆔 {vm.id} ({similarity:.0%})\n"
+                f"{i}. 🆔 {vm.id}\n"
+                f"🔹 Найдено в: {chunk_text[:120]}...\n"
                 f"📝 {vm.truncated_summary(self._SEARCH_SUMMARY_LIMIT)}\n"
                 f"🏷 {vm.formatted_tags}"
             )

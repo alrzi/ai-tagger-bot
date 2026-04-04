@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.domain.entities import Entry
 from src.domain.interfaces import EmbeddingGenerator, VectorSearcher
+from src.application import log_use_case, log_ai
 
 
 class SearchEntriesUseCase:
@@ -21,8 +21,15 @@ class SearchEntriesUseCase:
         self,
         user_id: int,
         query: str,
+        category_id: int | None = None,
         limit: int = 5,
-    ) -> list[tuple[Entry, float]]:
-        """Возвращает список (Entry, similarity)."""
+    ) -> list[dict[str, object]]:
+        """Возвращает список с результатами поиска: Запись + Чанк + Расстояние."""
+        log_use_case.info(f"🔍 Начинаю SearchEntries | user_id={user_id}, limit={limit}")
+        log_ai.info(f"🧠 Генерирую эмбеддинг запроса | query='{query[:30]}...'")
+        
         query_vector = await self.embedder.embed(query)
-        return await self.searcher.search_by_vector(user_id, query_vector, limit)
+        results = await self.searcher.search_with_chunks(user_id, query_vector, category_id, limit)
+        
+        log_use_case.info(f"✅ Поиск завершен | найдено {len(results)} результатов")
+        return results

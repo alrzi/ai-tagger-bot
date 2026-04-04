@@ -5,18 +5,20 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from sqlalchemy import Row, select, text
+from sqlalchemy import Row, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domain.entities import ContentType, Entry
+from src.domain.entities import Entry
+from src.domain.interfaces import TagRepository
 from src.infrastructure.db.models import EntryModel
 
 
 class PostgresEntryRepository:
     """Репозиторий записей на PostgreSQL + pgvector."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, tag_repository: TagRepository) -> None:
         self.session = session
+        self.tag_repository = tag_repository
 
     async def save(self, entry: Entry) -> Entry:
         if entry.id is not None:
@@ -36,7 +38,11 @@ class PostgresEntryRepository:
         model = await self._get_model_by_id(entry_id)
         if model is None or model.user_id != user_id:
             return None
-        return self._model_to_entry(model)
+
+        entry = self._model_to_entry(model)
+        tags_map = await self.tag_repository.get_tags_for_entries([entry_id])
+        entry.tags = tags_map.get(entry_id, [])
+        return entry
 
     async def list_recent(self, user_id: int, limit: int = 10) -> list[Entry]:
         stmt = (
@@ -47,41 +53,17 @@ class PostgresEntryRepository:
         )
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entry(m) for m in models]
+        entries = [self._model_to_entry(m) for m in models]
 
-    async def search_by_vector(
-        self, user_id: int, query_vector: list[float], limit: int = 5
-    ) -> list[tuple[Entry, float]]:
-        query = text(
-            """
-            SELECT *, 1.0 / (1.0 + (embedding <=> :vec)) AS similarity
-            FROM entries
-            WHERE user_id = :uid AND embedding IS NOT NULL
-            ORDER BY similarity DESC
-            LIMIT :lim
-            """
-        )
-        result = await self.session.execute(
-            query,
-            {"vec": str(query_vector), "uid": user_id, "lim": limit},
-        )
-        return [self._row_to_entry(row) for row in result.fetchall()]
+        entry_ids = [entry.id for entry in entries if entry.id is not None]
+        tags_map = await self.tag_repository.get_tags_for_entries(entry_ids)
 
-    async def search_by_tags(
-        self, user_id: int, tags: list[str], limit: int = 10
-    ) -> list[Entry]:
-        stmt = (
-            select(EntryModel)
-            .where(
-                EntryModel.user_id == user_id,
-                EntryModel.tags.overlap(tags),
-            )
-            .order_by(EntryModel.created_at.desc())
-            .limit(limit)
-        )
-        result = await self.session.execute(stmt)
-        models = result.scalars().all()
-        return [self._model_to_entry(m) for m in models]
+        for entry in entries:
+            if entry.id is not None:
+                entry.tags = tags_map.get(entry.id, [])
+
+        return entries
+
 
     async def delete(self, entry_id: int, user_id: int) -> bool:
         model = await self._get_model_by_id(entry_id)
@@ -101,37 +83,36 @@ class PostgresEntryRepository:
 
     # --- Private helpers ---
 
+
     async def _get_model_by_id(self, entry_id: int) -> Optional[EntryModel]:
         return await self.session.get(EntryModel, entry_id)
 
     def _create_model(self, entry: Entry) -> EntryModel:
         return EntryModel(
             user_id=entry.user_id,
+            category_position=entry.category_position,
             url=entry.url,
             title=entry.title,
             raw_text=entry.raw_text,
             summary=entry.summary,
-            tags=entry.tags,
-            content_type=entry.content_type.value,
             embedding=entry.embedding,
         )
 
     def _update_model_from_entry(self, model: EntryModel, entry: Entry) -> None:
         model.summary = entry.summary
-        model.tags = entry.tags
-        model.content_type = entry.content_type.value
+        model.category_position = entry.category_position
         model.embedding = entry.embedding
 
     def _model_to_entry(self, model: EntryModel) -> Entry:
         return Entry(
             id=model.id,
             user_id=model.user_id,
+            category_position=model.category_position,
             url=model.url,
             title=model.title or "",
             raw_text=model.raw_text or "",
             summary=model.summary or "",
-            tags=self._parse_tags(model.tags),
-            content_type=ContentType(model.content_type) if model.content_type else ContentType.UNKNOWN,
+            tags=[],
             embedding=self._parse_embedding(model.embedding),
             is_read=model.is_read,
             created_at=model.created_at,
@@ -143,23 +124,17 @@ class PostgresEntryRepository:
         entry = Entry(
             id=data["id"],
             user_id=data["user_id"],
+            category_position=data.get("category_position", 0),
             url=data.get("url"),
             title=data.get("title") or "",
             raw_text=data.get("raw_text") or "",
             summary=data.get("summary") or "",
-            tags=self._parse_tags(data.get("tags")),
-            content_type=ContentType(data["content_type"]) if data.get("content_type") else ContentType.UNKNOWN,
+            tags=[],
             embedding=embedding,
             created_at=data["created_at"],
         )
         similarity = data.get("similarity", 0.0)
         return entry, float(similarity)
-
-    @staticmethod
-    def _parse_tags(tags: list[str] | None) -> list[str]:
-        if tags is None:
-            return []
-        return [str(t) for t in tags]
 
     @staticmethod
     def _parse_embedding(embedding: list[float] | str | None) -> list[float] | None:

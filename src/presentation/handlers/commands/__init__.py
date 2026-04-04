@@ -7,6 +7,7 @@ from src.presentation.handlers.commands.list import router as list_router
 from src.presentation.handlers.commands.search import router as search_router
 from src.presentation.handlers.commands.categories import router as categories_router
 from src.presentation.handlers.commands.stats import router as stats_router
+from src.presentation.handlers.commands.tags import router as tags_router
 
 __all__ = [
     "start_router",
@@ -16,4 +17,5 @@ __all__ = [
     "search_router",
     "categories_router",
     "stats_router",
+    "tags_router",
 ]
