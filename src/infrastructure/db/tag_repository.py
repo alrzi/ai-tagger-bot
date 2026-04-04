@@ -46,7 +46,7 @@ class PostgresTagRepository(TagRepository):
             for normalized, name in tags
         ])
         stmt = stmt.on_conflict_do_nothing(index_elements=["user_id", "normalized_name"])
-        stmt = stmt.returning(TagModel.normalized_name, TagModel.id)
+        stmt = stmt.returning(TagModel.normalized_name, TagModel.id)  # type: ignore[assignment]
         
         result = await self.session.execute(stmt)
         return {str(row[0]): int(row[1]) for row in result.all()}
@@ -64,6 +64,8 @@ class PostgresTagRepository(TagRepository):
                     [{"entry_id": entry_id, "tag_id": tag_id} for tag_id in tag_ids]
                 )
 
+        await self.session.commit()
+    
     async def get_tags_for_entries(self, entry_ids: list[int]) -> dict[int, list[str]]:
         """
         Подгружает теги для списка записей за один SQL запрос.
@@ -94,3 +96,4 @@ class PostgresTagRepository(TagRepository):
                     tags_map[entry_id].append(tag_name)
 
                 return tags_map
+

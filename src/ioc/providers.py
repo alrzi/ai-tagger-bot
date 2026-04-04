@@ -27,6 +27,7 @@ from src.infrastructure.db.entry_repository import PostgresEntryRepository
 from src.infrastructure.db.category_repository import PostgresCategoryRepository
 from src.infrastructure.db.tag_repository import PostgresTagRepository
 from src.infrastructure.db.chunk_repository import PostgresChunkRepository
+from src.infrastructure.db.chunk_search_repository import PostgresChunkSearchRepository
 from src.application.analyze_entry import AnalyzeEntryInteractor
 from src.application.process_entry_chunks import ProcessEntryChunksInteractor
 from src.application.get_entry import GetEntryUseCase
@@ -93,9 +94,10 @@ class RepositoryProvider(Provider):
     category_repo_impl = provide(PostgresCategoryRepository)
     tag_repo_impl = provide(PostgresTagRepository)
     chunk_repo_impl = provide(PostgresChunkRepository)
+    chunk_searcher_impl = provide(PostgresChunkSearchRepository)
 
     entry_repo = alias(source=PostgresEntryRepository, provides=EntryRepository)
-    vector_searcher = alias(source=PostgresEntryRepository, provides=VectorSearcher)
+    vector_searcher = alias(source=PostgresChunkSearchRepository, provides=VectorSearcher)
     category_repo = alias(source=PostgresCategoryRepository, provides=CategoryRepository)
     tag_repo = alias(source=PostgresTagRepository, provides=TagRepository)
     chunk_repo = alias(source=PostgresChunkRepository, provides=ChunkRepository)

@@ -2,33 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
+import json
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
-@dataclass(frozen=True, slots=True)
-class ChunkSearchResult:
-    """Результат поиска по чанкам."""
-
-    entry_id: int
-    chunk_text: str
-    distance: float
-    category_name: Optional[str]
-
-    user_id: int
-    category_position: Optional[int]
-    url: Optional[str]
-    title: str
-    raw_text: str
-    summary: str
-    is_read: bool
-    created_at: str
+from src.domain.interfaces import VectorSearcher
 
 
-class PostgresChunkSearchRepository:
+class PostgresChunkSearchRepository(VectorSearcher):
     """
     Репозиторий для семантического поиска по чанкам.
 
@@ -46,7 +28,11 @@ class PostgresChunkSearchRepository:
             FROM chunks c
             JOIN entries e ON c.entry_id = e.id
             WHERE e.user_id = :uid 
-              AND (:cat_id IS NULL OR e.category_position = :cat_id)
+              AND (
+                CASE WHEN CAST(:cat_id AS smallint) IS NULL THEN TRUE
+                ELSE e.category_position = CAST(:cat_id AS smallint)
+                END
+              )
             ORDER BY distance ASC
             LIMIT :lim
         )
@@ -73,13 +59,13 @@ class PostgresChunkSearchRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def search(
+    async def search_with_chunks(
         self, 
         user_id: int, 
         query_vector: list[float], 
-        category_id: Optional[int] = None, 
+        category_id: int | None = None, 
         limit: int = 5
-    ) -> list[ChunkSearchResult]:
+    ) -> list[dict[str, object]]:
         """Выполняет семантический поиск по чанкам."""
 
         if limit < 1:
@@ -91,27 +77,27 @@ class PostgresChunkSearchRepository:
         result = await self.session.execute(
             self.__SEARCH_QUERY,
             {
-                "vec": query_vector,
+                "vec": json.dumps(query_vector),
                 "uid": user_id,
                 "cat_id": category_id,
-                "lim": limit
+                "lim": limit,
             },
         )
 
         return [
-            ChunkSearchResult(
-                entry_id=row.id,
-                chunk_text=row.chunk_text,
-                distance=row.distance,
-                category_name=row.category_name,
-                user_id=row.user_id,
-                category_position=row.category_position,
-                url=row.url,
-                title=row.title or "",
-                raw_text=row.raw_text or "",
-                summary=row.summary or "",
-                is_read=row.is_read,
-                created_at=row.created_at,
-            )
+            {
+                "entry_id": row.id,
+                "chunk_text": row.chunk_text,
+                "distance": row.distance,
+                "category_name": row.category_name,
+                "user_id": row.user_id,
+                "category_position": row.category_position,
+                "url": row.url,
+                "title": row.title or "",
+                "raw_text": row.raw_text or "",
+                "summary": row.summary or "",
+                "is_read": row.is_read,
+                "created_at": row.created_at,
+            }
             for row in result.all()
         ]

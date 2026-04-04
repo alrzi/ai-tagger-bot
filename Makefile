@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck run install verify check-di
+.PHONY: check lint typecheck run install verify check-di test
 
 # Установка зависимостей
 install:
@@ -24,5 +24,13 @@ run:
 check-di:
 	source .venv/bin/activate && python scripts/check_di.py
 
+# Запуск всех тестов
+test:
+	source .venv/bin/activate && pytest tests/ -x
+
 # Полная проверка
-verify: check typecheck check-di
+verify: check typecheck check-di test
+
+# Подключение к консоли PostgreSQL
+db-shell:
+	docker compose exec postgres psql -U ai_tagger ai_tagger

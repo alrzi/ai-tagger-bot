@@ -44,3 +44,4 @@ class SyncEntryTags:
 
         await self._tag_repository.replace_entry_tags(entry_id, tag_ids)
         log_use_case.info(f"✅ Теги синхронизированы | entry_id={entry_id}, тегов={len(tag_ids)}")
+
